@@ -1,5 +1,5 @@
 {
-  "__version__": "1.0.8",
+  "__version__": "1.0.9",
   "macroConfig": {
     "CUSTOM_PIPELINE_NAME": "Pipeline003"
   },
@@ -125,6 +125,9 @@
         "_value": false
       },
       "custom-pipeline": {
+        "_value": true
+      },
+      "graphics": {
         "_value": true
       }
     },
