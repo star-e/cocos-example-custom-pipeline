@@ -1793,16 +1793,16 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -0.922,
-      "y": 3.064,
-      "z": 3.092
+      "x": 1,
+      "y": 3.8,
+      "z": 3
     },
     "_lrot": {
       "__type__": "cc.Quat",
-      "x": -0.20657213457562001,
-      "y": -0.19489614719138193,
-      "z": -0.042029453079672485,
-      "w": 0.957902380256282
+      "x": -0.39897641055397914,
+      "y": 0.22584390080048097,
+      "z": 0.10206497903119834,
+      "w": 0.8828335609547511
     },
     "_lscale": {
       "__type__": "cc.Vec3",
@@ -1814,8 +1814,8 @@
     "_layer": 1073741824,
     "_euler": {
       "__type__": "cc.Vec3",
-      "x": -24.339,
-      "y": -23.001,
+      "x": -48.639,
+      "y": 28.699,
       "z": 0
     },
     "_id": "48R0w+coJBoIvKLbdzR8rJ"
@@ -1843,15 +1843,15 @@
       "__id__": 127
     },
     "_visibility": -325058561,
-    "_size": 0.3,
-    "_luminanceHDR": 4897.190542712992,
-    "_luminance": 4897.190542712992,
+    "_size": 0.69,
+    "_luminanceHDR": 8274.56333079092,
+    "_luminance": 8274.56333079092,
     "_luminanceLDR": 498.3970260184439,
     "_term": 0,
-    "_range": 5,
-    "_spotAngle": 30,
+    "_range": 7.5,
+    "_spotAngle": 37,
     "_angleAttenuationStrength": 0,
-    "_shadowEnabled": false,
+    "_shadowEnabled": true,
     "_shadowPcf": 0,
     "_shadowBias": 0.00001,
     "_shadowNormalBias": 0,
