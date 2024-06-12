@@ -298,7 +298,11 @@
         "sharpness": 0.8
       },
       "fxaa": {
-        "enabled": false
+        "enabled": true
+      },
+      "msaa": {
+        "enabled": true,
+        "sampleCount": 4
       }
     },
     "_editorPreview": false,
