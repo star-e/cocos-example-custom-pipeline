@@ -15,11 +15,6 @@ import { JSB } from 'cc/env';
 import { getWindowInfo, WindowInfo } from '../pipeline-data';
 const { ccclass } = _decorator;
 
-import ResourceResidency = rendering.ResourceResidency;
-import ResourceFlags = rendering.ResourceFlags;
-import ResourceDimension = rendering.ResourceDimension;
-import MovePair = rendering.MovePair;
-
 const matArr: { name: string, path: string }[] = [
     { name: 'sampleTexture', path: 'mat/sampleTexture' },
 ];
@@ -92,6 +87,7 @@ class MoveResourcePipeline implements rendering.PipelineBuilder {
     }
 
     private initCameraResources (ppl: rendering.BasicPipeline, camera: renderer.scene.Camera, id: number, width: number, height: number): void {
+        const { ResourceDimension, ResourceFlags, ResourceResidency } = rendering;
         // all resource can be initialized here
         // 所有资源可以在这里初始化
         ppl.addRenderWindow(`Color${id}`, gfx.Format.BGRA8, width, height, camera.window);
@@ -181,6 +177,7 @@ class MoveResourcePipeline implements rendering.PipelineBuilder {
         // camera.node.setRotationFromEuler(euler);
 
         if (JSB) {
+            const { MovePair } = rendering;
             // 2. move resources which are not overlapped and have same resource description
             // 2. 对同样性质且不重叠的资源进行move
             const advancedPipeline = ppl as rendering.Pipeline;
@@ -248,7 +245,9 @@ class MoveResourcePipeline implements rendering.PipelineBuilder {
 
 // register pipeline
 // 注册管线
-rendering.setCustomPipeline('MovePipeline', new MoveResourcePipeline());
+if (rendering) {
+    rendering.setCustomPipeline('MovePipeline', new MoveResourcePipeline());
+}
 
 @ccclass('pipeline_001')
 export class pipeline_001 extends Component {

@@ -11,10 +11,7 @@ import {
 import { getWindowInfo, WindowInfo } from '../pipeline-data';
 const { ccclass, property } = _decorator;
 
-import CopyPair = rendering.CopyPair;
 import { JSB } from 'cc/env';
-
-
 
 function addOrUpdateRenderTarget(name: string, format: gfx.Format, width: number, height: number, residency: rendering.ResourceResidency, pipeline: rendering.Pipeline) {
     if (!pipeline.containsResource(name)) {
@@ -181,7 +178,9 @@ class RaytracingByComputePipeline implements rendering.PipelineBuilder {
 
 // register pipeline
 // 注册管线
-rendering.setCustomPipeline('RaytracingWeekend', new RaytracingByComputePipeline());
+if (rendering) {
+    rendering.setCustomPipeline('RaytracingWeekend', new RaytracingByComputePipeline());
+}
 
 loadResource();
 

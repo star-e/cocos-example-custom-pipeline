@@ -258,7 +258,9 @@ class MultiLightPipeline implements rendering.PipelineBuilder {
 
 // register pipeline
 // 注册管线
-rendering.setCustomPipeline('Pipeline003', new MultiLightPipeline());
+if (rendering) {
+    rendering.setCustomPipeline('Pipeline003', new MultiLightPipeline());
+}
 
 @ccclass('pipeline_003_multi_light')
 export class pipeline_003_multi_light extends Component {

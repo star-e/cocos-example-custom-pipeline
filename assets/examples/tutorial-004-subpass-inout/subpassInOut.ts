@@ -12,9 +12,6 @@ import {
 import { getWindowInfo, WindowInfo } from '../pipeline-data';
 const { ccclass } = _decorator;
 
-import CopyPair = rendering.CopyPair;
-
-
 function addOrUpdateRenderTarget(name: string, format: gfx.Format, width: number, height: number, residency: rendering.ResourceResidency, pipeline: rendering.Pipeline) {
     if (!pipeline.containsResource(name)) {
         pipeline.addRenderTarget(name, format, width, height, residency);
@@ -164,7 +161,7 @@ class SubpassInOutPipeline implements rendering.PipelineBuilder {
             .addFullscreenQuad(materialMap.get('subpassMat2'), 0);
 
         const forwardPassRTName = `Color${id}`;
-        const copy = new CopyPair('cFive', forwardPassRTName, 1, 1, 0, 0, 0, 0, 0, 0);
+        const copy = new rendering.CopyPair('cFive', forwardPassRTName, 1, 1, 0, 0, 0, 0, 0, 0);
         pipeline.addCopyPass([copy]);
     }
     // internal cached resources
@@ -184,7 +181,9 @@ class SubpassInOutPipeline implements rendering.PipelineBuilder {
 
 // register pipeline
 // 注册管线
-rendering.setCustomPipeline('SubpassInOut', new SubpassInOutPipeline());
+if (rendering) {
+    rendering.setCustomPipeline('SubpassInOut', new SubpassInOutPipeline());
+}
 
 loadResource();
 

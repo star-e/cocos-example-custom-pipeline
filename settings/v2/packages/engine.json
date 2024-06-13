@@ -18,6 +18,9 @@
       "gfx-webgl2": {
         "_value": true
       },
+      "gfx-webgpu": {
+        "_value": false
+      },
       "animation": {
         "_value": true
       },
@@ -26,6 +29,9 @@
       },
       "3d": {
         "_value": true
+      },
+      "meshopt": {
+        "_value": false
       },
       "2d": {
         "_value": true
