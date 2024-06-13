@@ -613,21 +613,21 @@ class BuiltinPipeline implements rendering.PipelineBuilder {
                     }
                 } else {
                     // No FXAA (Size might be scaled)
-                    lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                    lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
                         width, height, radianceName,
                         nativeWidth, nativeHeight, colorName);
                 }
             } else {
                 // No post process, output HDR result to screen directly (Size might be scaled)
                 this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
-                lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
                     width, height, radianceName,
                     nativeWidth, nativeHeight, colorName);
             }
         } else { // LDR
             if (this._cameraConfigs.enableShadingScale) { // LDR (Size is scaled)
                 this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
-                lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
                     width, height, radianceName,
                     nativeWidth, nativeHeight, colorName);
             } else { // LDR (Size is not scaled)
@@ -641,7 +641,7 @@ class BuiltinPipeline implements rendering.PipelineBuilder {
     // ----------------------------------------------------------------
     // Common Passes
     // ----------------------------------------------------------------
-    private _addScaleOrFsrRadiancePass(
+    private _addTonemapResizeOrSuperResolutionPasses(
         ppl: rendering.BasicPipeline,
         settings: PipelineSettings,
         id: number,
