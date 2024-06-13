@@ -25,6 +25,7 @@
 import { DEBUG } from 'cc/env';
 import {
     assert,
+    clamp,
     geometry,
     gfx,
     Material,
@@ -301,6 +302,7 @@ class CameraConfigs {
     enableProfiler = false;
     enableShadingScale = false;
     enableMSAA = false;
+    enableFSR = false;
     singleForwardRadiancePass = false;
     shadingScale = 0.5;
     pipelineSettings: PipelineSettings | null = null;
@@ -317,9 +319,12 @@ function setupCameraConfigs(
     const isMainGameWindow: boolean = camera.cameraUsage === CameraUsage.GAME && !!camera.window.swapchain;
     const isEditorView: boolean = camera.cameraUsage === CameraUsage.SCENE_VIEW || camera.cameraUsage === CameraUsage.PREVIEW;
 
-    cameraConfigs.enablePostProcess = pipelineConfigs.useFloatOutput && camera.usePostProcess && (isMainGameWindow || isEditorView);
-    cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
     cameraConfigs.pipelineSettings = camera.pipelineSettings;
+    cameraConfigs.enablePostProcess = cameraConfigs.pipelineSettings !== null
+        && pipelineConfigs.useFloatOutput
+        && camera.usePostProcess
+        && (isMainGameWindow || isEditorView);
+    cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
 
     if (isEditorView) {
         cameraConfigs.pipelineSettings = rendering.getEditorPipelineSettings();
@@ -334,6 +339,7 @@ function setupCameraConfigs(
 
     // MSAA
     cameraConfigs.enableMSAA = cameraConfigs.pipelineSettings !== null
+        && cameraConfigs.enablePostProcess
         && cameraConfigs.pipelineSettings.msaa.enabled
         && !pipelineConfigs.isWeb;
 
@@ -344,6 +350,12 @@ function setupCameraConfigs(
     cameraConfigs.enableShadingScale = cameraConfigs.pipelineSettings !== null
         && cameraConfigs.pipelineSettings.enableShadingScale
         && cameraConfigs.shadingScale !== 1.0;
+
+    // FSR
+    cameraConfigs.enableFSR = cameraConfigs.pipelineSettings !== null
+        && cameraConfigs.pipelineSettings.fsr.enabled
+        && cameraConfigs.enableShadingScale
+        && cameraConfigs.shadingScale < 1.0;
 
     // Forward rendering
     cameraConfigs.singleForwardRadiancePass
@@ -366,11 +378,15 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
     private readonly _bloomWidths: Array<number> = [];
     private readonly _bloomHeights: Array<number> = [];
     private readonly _bloomTexNames: Array<string> = [];
+    // FSR
+    private readonly _fsrParams = new Vec4(0, 0, 0, 0);
+    private readonly _fsrTexSize = new Vec4(0, 0, 0, 0);
     // Materials
     private readonly _copyAndTonemapMaterial = new Material();
     private readonly _dofMaterial = new Material();
     private readonly _bloomMaterial = new Material();
     private readonly _fxaaMaterial = new Material();
+    private readonly _fsrMaterial = new Material();
     private _initialized = false; // TODO(zhouzhenglong): Make default effect asset loading earlier and remove this flag
 
     // Forward lighting
@@ -394,6 +410,10 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
 
         // Render Window (UI)
         ppl.addRenderWindow(window.colorName, Format.BGRA8, nativeWidth, nativeHeight, window);
+
+        if (this._cameraConfigs.enableFSR) {
+            ppl.addRenderTarget(`FsrColor${id}`, Format.RGBA8, nativeWidth, nativeHeight);
+        }
 
         // Radiance
         if (this._configs.useFloatOutput) {
@@ -451,12 +471,14 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
             }
         }
 
+        if (this._cameraConfigs.enableFSR
+            || this._cameraConfigs.enableMSAA
+            || (this._cameraConfigs.enablePostProcess && settings.depthOfField.enabled)) {
+            ppl.addRenderTarget(`LdrColor${id}`, Format.RGBA8, width, height);
+        }
+
         // Post Process
         if (this._cameraConfigs.enablePostProcess && settings !== null) {
-            // Ldr Color
-            if (settings.fxaa.enabled || settings.depthOfField.enabled) {
-                ppl.addRenderTarget(`LdrColor${id}`, Format.RGBA8, width, height);
-            }
             if (settings.fxaa.enabled && this._cameraConfigs.enableShadingScale) {
                 ppl.addRenderTarget(`AaColor${id}`, Format.RGBA8, width, height);
             }
@@ -546,7 +568,6 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
             if (this._cameraConfigs.enablePostProcess && settings !== null) {
                 // Post Process
                 const dofRadianceName = `DofRadiance${id}`;
-                const ldrColorName = `LdrColor${id}`;
                 const aaColorName = `AaColor${id}`;
                 // Radiance and DoF
                 if (this._configs.supportDepthSample && settings.depthOfField.enabled) {
@@ -563,6 +584,7 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
                 }
                 // Tone Mapping and FXAA
                 if (settings.fxaa.enabled) {
+                    const ldrColorName = `LdrColor${id}`;
                     // FXAA is applied after tone mapping
                     this._addCopyAndTonemapPass(ppl, width, height, radianceName, ldrColorName);
                     // Apply FXAA
@@ -570,24 +592,36 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
                         // Apply FXAA on scaled image
                         this._addFxaaPass(ppl, width, height, ldrColorName, aaColorName);
                         // Copy FXAA result to screen
-                        lastPass = this._addCopyPass(ppl, nativeWidth, nativeHeight, aaColorName, colorName);
+                        if (this._cameraConfigs.enableFSR) {
+                            // Apply FSR
+                            lastPass = this._addFsrPass(ppl, settings, id, width, height, aaColorName, nativeWidth, nativeHeight, colorName);
+                        } else {
+                            // Scale FXAA result to screen
+                            lastPass = this._addCopyPass(ppl, nativeWidth, nativeHeight, aaColorName, colorName);
+                        }
                     } else {
                         // Image not scaled, output FXAA result to screen directly
                         lastPass = this._addFxaaPass(ppl, nativeWidth, nativeHeight, ldrColorName, colorName);
                     }
                 } else {
-                    // No FXAA, tonemap HDR result to screen directly (Size might be scaled)
-                    lastPass = this._addCopyAndTonemapPass(ppl, nativeWidth, nativeHeight, radianceName, colorName);
+                    // No FXAA (Size might be scaled)
+                    lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                        width, height, radianceName,
+                        nativeWidth, nativeHeight, colorName);
                 }
             } else {
                 // No post process, output HDR result to screen directly (Size might be scaled)
                 this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
-                lastPass = this._addCopyAndTonemapPass(ppl, nativeWidth, nativeHeight, radianceName, colorName);
+                lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                    width, height, radianceName,
+                    nativeWidth, nativeHeight, colorName);
             }
         } else { // LDR
             if (this._cameraConfigs.enableShadingScale) { // LDR (Size is scaled)
                 this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
-                lastPass = this._addCopyAndTonemapPass(ppl, nativeWidth, nativeHeight, radianceName, colorName);
+                lastPass = this._addScaleOrFsrRadiancePass(ppl, settings, id,
+                    width, height, radianceName,
+                    nativeWidth, nativeHeight, colorName);
             } else { // LDR (Size is not scaled)
                 lastPass = this._addForwardRadiancePasses(ppl, id, camera, nativeWidth, nativeHeight, mainLight, colorName, depthStencilName);
             }
@@ -599,6 +633,30 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
     // ----------------------------------------------------------------
     // Common Passes
     // ----------------------------------------------------------------
+    private _addScaleOrFsrRadiancePass(
+        ppl: rendering.BasicPipeline,
+        settings: PipelineSettings,
+        id: number,
+        width: number,
+        height: number,
+        radianceName: string,
+        nativeWidth: number,
+        nativeHeight: number,
+        colorName: string,
+    ): rendering.BasicRenderPassBuilder {
+        const ldrColorName = `LdrColor${id}`;
+        let lastPass: rendering.BasicRenderPassBuilder;
+        if (this._cameraConfigs.enableFSR) {
+            // Apply FSR
+            this._addCopyAndTonemapPass(ppl, width, height, radianceName, ldrColorName);
+            lastPass = this._addFsrPass(ppl, settings, id, width, height, ldrColorName, nativeWidth, nativeHeight, colorName);
+        } else {
+            // Output HDR/LDR result to screen directly (Size might be scaled)
+            lastPass = this._addCopyAndTonemapPass(ppl, nativeWidth, nativeHeight, radianceName, colorName);
+        }
+        return lastPass;
+    }
+
     private _addCascadedShadowMapPass(
         ppl: rendering.BasicPipeline,
         id: number,
@@ -884,6 +942,46 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
             .addFullscreenQuad(this._bloomMaterial, 3);
     }
 
+    private _addFsrPass(
+        ppl: rendering.BasicPipeline,
+        settings: PipelineSettings,
+        id: number,
+        width: number,
+        height: number,
+        ldrColorName: string,
+        nativeWidth: number,
+        nativeHeight: number,
+        colorName: string,
+    ): rendering.BasicRenderPassBuilder {
+        this._fsrParams.x = clamp(1.0 - settings.fsr.sharpness, 0.02, 0.98);
+        this._fsrTexSize.x = width;
+        this._fsrTexSize.y = height;
+        this._fsrTexSize.z = nativeWidth;
+        this._fsrTexSize.w = nativeHeight;
+        this._fsrMaterial.setProperty('fsrParams', this._fsrParams);
+        this._fsrMaterial.setProperty('texSize', this._fsrTexSize);
+
+        const fsrColorName = `FsrColor${id}`;
+
+        const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-easu');
+        easuPass.addRenderTarget(fsrColorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
+        easuPass.addTexture(ldrColorName, 'outputResultMap');
+        easuPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+        easuPass
+            .addQueue(QueueHint.OPAQUE)
+            .addFullscreenQuad(this._fsrMaterial, 0);
+
+        const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-rcas');
+        rcasPass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
+        rcasPass.addTexture(fsrColorName, 'outputResultMap');
+        rcasPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+        rcasPass
+            .addQueue(QueueHint.OPAQUE)
+            .addFullscreenQuad(this._fsrMaterial, 1);
+
+        return rcasPass;
+    }
+
     private _addFxaaPass(
         ppl: rendering.BasicPipeline,
         width: number,
@@ -1070,10 +1168,14 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
         this._fxaaMaterial._uuid = `builtin-pipeline-post-fxaa-material`;
         this._fxaaMaterial.initialize({ effectName: 'pipeline/post-process/fxaa-hq' });
 
+        this._fsrMaterial._uuid = `builtin-pipeline-post-fsr-material`;
+        this._fsrMaterial.initialize({ effectName: 'pipeline/post-process/fsr' });
+
         if (this._copyAndTonemapMaterial.effectAsset !== null
             && this._dofMaterial.effectAsset !== null
             && this._bloomMaterial.effectAsset !== null
             && this._fxaaMaterial.effectAsset !== null
+            && this._fsrMaterial.effectAsset !== null
         ) {
             this._initialized = true;
         }

@@ -274,8 +274,8 @@
     "_enabled": true,
     "__prefab": null,
     "settings": {
-      "enableShadingScale": false,
-      "shadingScale": 0.5,
+      "enableShadingScale": true,
+      "shadingScale": 0.7,
       "depthOfField": {
         "enabled": false,
         "focusDistance": 0,
@@ -294,14 +294,14 @@
         "contribute": 0
       },
       "fsr": {
-        "enabled": false,
+        "enabled": true,
         "sharpness": 0.8
       },
       "fxaa": {
         "enabled": true
       },
       "msaa": {
-        "enabled": true,
+        "enabled": false,
         "sampleCount": 4
       }
     },
