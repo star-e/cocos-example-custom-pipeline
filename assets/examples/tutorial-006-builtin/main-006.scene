@@ -278,8 +278,8 @@
       "shadingScale": 0.7,
       "depthOfField": {
         "enabled": false,
-        "focusDistance": 0,
-        "focusRange": 0,
+        "focusDistance": 4,
+        "focusRange": 10,
         "bokehRadius": 1
       },
       "bloom": {
@@ -301,7 +301,7 @@
         "enabled": true
       },
       "msaa": {
-        "enabled": false,
+        "enabled": true,
         "sampleCount": 4
       }
     },

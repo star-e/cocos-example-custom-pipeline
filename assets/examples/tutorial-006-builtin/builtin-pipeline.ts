@@ -28,6 +28,7 @@ import {
     clamp,
     geometry,
     gfx,
+    makePipelineSettings,
     Material,
     pipeline,
     PipelineSettings,
@@ -42,9 +43,11 @@ import {
 const { AABB, Sphere, intersect } = geometry;
 const { ClearFlagBit, Color, Format, FormatFeatureBit, LoadOp, StoreOp, TextureType, Viewport } = gfx;
 const { scene } = renderer;
-const { QueueHint, SceneFlags, ResourceFlags, ResourceResidency } = rendering ? rendering
-    : { QueueHint: undefined, SceneFlags: undefined, ResourceFlags: undefined, ResourceResidency:undefined };
 const { CameraUsage, CSMLevel, LightType } = scene;
+
+if (rendering) {
+
+const { QueueHint, SceneFlags, ResourceFlags, ResourceResidency } = rendering;
 
 function forwardNeedClearColor(camera: renderer.scene.Camera): boolean {
     return !!(camera.clearFlag & (ClearFlagBit.COLOR | (ClearFlagBit.STENCIL << 1)));
@@ -296,6 +299,8 @@ function setupPipelineConfigs(
     configs.platform.w = (device.capabilities.screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
 }
 
+const defaultSettings = makePipelineSettings();
+
 class CameraConfigs {
     enableShadowMap = false;
     enablePostProcess = false;
@@ -305,7 +310,19 @@ class CameraConfigs {
     enableFSR = false;
     singleForwardRadiancePass = false;
     shadingScale = 0.5;
-    pipelineSettings: PipelineSettings | null = null;
+    pipelineSettings: PipelineSettings = defaultSettings;
+}
+
+function isPostProcessNeeded(
+    pipelineConfigs: PipelineConfigs,
+    settings: PipelineSettings,
+    camera: renderer.scene.Camera,
+): boolean {
+    return pipelineConfigs.useFloatOutput
+        && camera.usePostProcess
+        && (settings.depthOfField.enabled
+        || settings.bloom.enabled
+        || settings.fxaa.enabled);
 }
 
 function setupCameraConfigs(
@@ -313,56 +330,52 @@ function setupCameraConfigs(
     pipelineConfigs: PipelineConfigs,
     cameraConfigs: CameraConfigs,
 ): void {
-    cameraConfigs.enableShadowMap = camera.scene
-        ? camera.scene.mainLight !== null && camera.scene.mainLight.shadowEnabled
-        : false;
     const isMainGameWindow: boolean = camera.cameraUsage === CameraUsage.GAME && !!camera.window.swapchain;
     const isEditorView: boolean = camera.cameraUsage === CameraUsage.SCENE_VIEW || camera.cameraUsage === CameraUsage.PREVIEW;
 
-    cameraConfigs.pipelineSettings = camera.pipelineSettings;
-    cameraConfigs.enablePostProcess = cameraConfigs.pipelineSettings !== null
-        && pipelineConfigs.useFloatOutput
-        && camera.usePostProcess
-        && (isMainGameWindow || isEditorView);
+    cameraConfigs.enableShadowMap = camera.scene
+        ? camera.scene.mainLight !== null && camera.scene.mainLight.shadowEnabled
+        : false;
+
     cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
 
+    cameraConfigs.pipelineSettings = camera.pipelineSettings
+        ? camera.pipelineSettings : defaultSettings;
+
+    cameraConfigs.enablePostProcess
+        = isPostProcessNeeded(pipelineConfigs, cameraConfigs.pipelineSettings, camera)
+        && (isMainGameWindow || isEditorView);
+
     if (isEditorView) {
-        cameraConfigs.pipelineSettings = rendering.getEditorPipelineSettings();
-        if (cameraConfigs.pipelineSettings) {
-            const pipelineCamera: renderer.scene.Camera | null = rendering.getEditorPipelineCamera();
-            cameraConfigs.enablePostProcess = pipelineConfigs.useFloatOutput
-                && pipelineCamera !== null && pipelineCamera.usePostProcess;
-        } else {
-            cameraConfigs.enablePostProcess = false;
+        const editorSettings = rendering.getEditorPipelineSettings();
+        const pipelineCamera = rendering.getEditorPipelineCamera();
+        if (editorSettings && pipelineCamera) {
+            cameraConfigs.pipelineSettings = editorSettings;
+            cameraConfigs.enablePostProcess = isPostProcessNeeded(
+                pipelineConfigs, cameraConfigs.pipelineSettings, pipelineCamera);
         }
     }
 
     // MSAA
-    cameraConfigs.enableMSAA = cameraConfigs.pipelineSettings !== null
-        && cameraConfigs.enablePostProcess
-        && cameraConfigs.pipelineSettings.msaa.enabled
+    cameraConfigs.enableMSAA = cameraConfigs.pipelineSettings.msaa.enabled
         && !pipelineConfigs.isWeb;
 
     // Shading scale
-    cameraConfigs.shadingScale = cameraConfigs.pipelineSettings !== null
-        ? cameraConfigs.pipelineSettings.shadingScale
-        : 1.0;
-    cameraConfigs.enableShadingScale = cameraConfigs.pipelineSettings !== null
-        && cameraConfigs.pipelineSettings.enableShadingScale
+    cameraConfigs.shadingScale = cameraConfigs.pipelineSettings.shadingScale;
+    cameraConfigs.enableShadingScale = cameraConfigs.pipelineSettings.enableShadingScale
         && cameraConfigs.shadingScale !== 1.0;
 
-    // FSR
-    cameraConfigs.enableFSR = cameraConfigs.pipelineSettings !== null
-        && cameraConfigs.pipelineSettings.fsr.enabled
+    // FSR (Depend on Shading scale)
+    cameraConfigs.enableFSR = cameraConfigs.pipelineSettings.fsr.enabled
         && cameraConfigs.enableShadingScale
         && cameraConfigs.shadingScale < 1.0;
 
-    // Forward rendering
+    // Forward rendering (Depend on MSAA and TBR)
     cameraConfigs.singleForwardRadiancePass
         = pipelineConfigs.isMobile || cameraConfigs.enableMSAA;
 }
 
-export class BuiltinPipeline implements rendering.PipelineBuilder {
+class BuiltinPipeline implements rendering.PipelineBuilder {
     // Internal cached resources
     private readonly _clearColor = new Color(0, 0, 0, 1);
     private readonly _clearColorTransparentBlack = new Color(0, 0, 0, 0);
@@ -424,6 +437,7 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
             // Reuse render window
         }
         ppl.addDepthStencil(window.depthStencilName, Format.DEPTH_STENCIL, width, height);
+        ppl.addRenderTarget(`LdrColor${id}`, Format.RGBA8, width, height);
 
         // MsaaRadiance
         if (this._cameraConfigs.enableMSAA) {
@@ -471,17 +485,8 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
             }
         }
 
-        if (this._cameraConfigs.enableFSR
-            || this._cameraConfigs.enableMSAA
-            || (this._cameraConfigs.enablePostProcess && settings.depthOfField.enabled)) {
-            ppl.addRenderTarget(`LdrColor${id}`, Format.RGBA8, width, height);
-        }
-
         // Post Process
-        if (this._cameraConfigs.enablePostProcess && settings !== null) {
-            if (settings.fxaa.enabled && this._cameraConfigs.enableShadingScale) {
-                ppl.addRenderTarget(`AaColor${id}`, Format.RGBA8, width, height);
-            }
+        if (this._cameraConfigs.enablePostProcess) {
             // DepthOfField
             if (settings.depthOfField.enabled) {
                 const halfWidth = Math.max(Math.floor(width / 2), 1);
@@ -501,6 +506,10 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
                     bloomHeight = Math.max(Math.floor(bloomHeight / 2), 1);
                     ppl.addRenderTarget(`BloomTex${id}_${i}`, Format.RGBA16F, bloomWidth, bloomHeight);
                 }
+            }
+            // FXAA
+            if (settings.fxaa.enabled && this._cameraConfigs.enableShadingScale) {
+                ppl.addRenderTarget(`AaColor${id}`, Format.RGBA8, width, height);
             }
         }
     }
@@ -565,12 +574,10 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
         // Forward Lighting
         let lastPass: rendering.BasicRenderPassBuilder;
         if (this._configs.useFloatOutput) { // HDR
-            if (this._cameraConfigs.enablePostProcess && settings !== null) {
-                // Post Process
-                const dofRadianceName = `DofRadiance${id}`;
-                const aaColorName = `AaColor${id}`;
+            if (this._cameraConfigs.enablePostProcess) { // Post Process
                 // Radiance and DoF
                 if (this._configs.supportDepthSample && settings.depthOfField.enabled) {
+                    const dofRadianceName = `DofRadiance${id}`;
                     // Disable MSAA, depth stencil cannot be resolved cross-platformly
                     this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight,
                         dofRadianceName, depthStencilName, true, StoreOp.STORE);
@@ -589,6 +596,7 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
                     this._addCopyAndTonemapPass(ppl, width, height, radianceName, ldrColorName);
                     // Apply FXAA
                     if (this._cameraConfigs.enableShadingScale) {
+                        const aaColorName = `AaColor${id}`;
                         // Apply FXAA on scaled image
                         this._addFxaaPass(ppl, width, height, ldrColorName, aaColorName);
                         // Copy FXAA result to screen
@@ -1184,6 +1192,6 @@ export class BuiltinPipeline implements rendering.PipelineBuilder {
     }
 }
 
-if (rendering) {
-    rendering.setCustomPipeline('TutorialBuiltin', new BuiltinPipeline());
-}
+rendering.setCustomPipeline('TutorialBuiltin', new BuiltinPipeline());
+
+} // if (rendering)
