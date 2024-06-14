@@ -458,7 +458,7 @@ if (rendering) {
             // MsaaRadiance
             if (this._cameraConfigs.enableMSAA) {
                 // Notice: We never store multisample results.
-                // These samples are always resolved and discarded at the end of render pass.
+                // These samples are always resolved and discarded at the end of the render pass.
                 // So the ResourceResidency should be MEMORYLESS.
                 if (this._configs.useFloatOutput) {
                     ppl.addTexture(`MsaaRadiance${id}`, TextureType.TEX2D, Format.RGBA16F, width, height, 1, 1, 1,
