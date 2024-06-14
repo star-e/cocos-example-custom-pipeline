@@ -136,6 +136,7 @@ function isPostProcessNeeded(
         && camera.usePostProcess
         && (settings.depthOfField.enabled
         || settings.bloom.enabled
+        || settings.colorGrading.enabled
         || settings.fxaa.enabled);
 }
 
@@ -395,6 +396,8 @@ if (rendering) {
         private readonly _bloomWidths: Array<number> = [];
         private readonly _bloomHeights: Array<number> = [];
         private readonly _bloomTexNames: Array<string> = [];
+        // Color Grading
+        private readonly _colorGradingTexSize = new Vec2(0, 0);
         // FSR
         private readonly _fsrParams = new Vec4(0, 0, 0, 0);
         private readonly _fsrTexSize = new Vec4(0, 0, 0, 0);
@@ -402,8 +405,11 @@ if (rendering) {
         private readonly _copyAndTonemapMaterial = new Material();
         private readonly _dofMaterial = new Material();
         private readonly _bloomMaterial = new Material();
+        private readonly _colorGradingMaterial = new Material();
         private readonly _fxaaMaterial = new Material();
         private readonly _fsrMaterial = new Material();
+
+        // Internal States
         private _initialized = false; // TODO(zhouzhenglong): Make default effect asset loading earlier and remove this flag
 
         // Forward lighting
@@ -605,7 +611,7 @@ if (rendering) {
                     if (settings.fxaa.enabled) {
                         const ldrColorName = `LdrColor${id}`;
                         // FXAA is applied after tone mapping
-                        this._addCopyAndTonemapPass(ppl, width, height, radianceName, ldrColorName);
+                        this._addCopyAndTonemapPass(ppl, settings, width, height, radianceName, ldrColorName);
                         // Apply FXAA
                         if (this._cameraConfigs.enableShadingScale) {
                             const aaColorName = `AaColor${id}`;
@@ -671,11 +677,15 @@ if (rendering) {
             let lastPass: rendering.BasicRenderPassBuilder;
             if (this._cameraConfigs.enableFSR) {
                 // Apply FSR
-                this._addCopyAndTonemapPass(ppl, width, height, radianceName, ldrColorName);
-                lastPass = this._addFsrPass(ppl, settings, id, width, height, ldrColorName, nativeWidth, nativeHeight, colorName);
+                this._addCopyAndTonemapPass(ppl, settings,
+                    width, height, radianceName, ldrColorName);
+                lastPass = this._addFsrPass(ppl, settings, id,
+                    width, height, ldrColorName,
+                    nativeWidth, nativeHeight, colorName);
             } else {
                 // Output HDR/LDR result to screen directly (Size might be scaled)
-                lastPass = this._addCopyAndTonemapPass(ppl, nativeWidth, nativeHeight, radianceName, colorName);
+                lastPass = this._addCopyAndTonemapPass(ppl, settings,
+                    nativeWidth, nativeHeight, radianceName, colorName);
             }
             return lastPass;
         }
@@ -734,17 +744,43 @@ if (rendering) {
 
         private _addCopyAndTonemapPass(
             ppl: rendering.BasicPipeline,
+            settings: PipelineSettings,
             width: number,
             height: number,
             radianceName: string,
             colorName: string,
         ): rendering.BasicRenderPassBuilder {
-            const pass = ppl.addRenderPass(width, height, 'post-final-tonemap');
-            pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
-            pass.addTexture(radianceName, 'inputTexture');
-            pass.setVec4('g_platform', this._configs.platform);
-            pass.addQueue(QueueHint.OPAQUE)
-                .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
+            let pass: rendering.BasicRenderPassBuilder;
+            if (this._cameraConfigs.enablePostProcess
+                && settings.colorGrading.enabled
+                && settings.colorGrading.colorGradingMap !== null) {
+                const lutTex = settings.colorGrading.colorGradingMap;
+
+                this._colorGradingMaterial.setProperty('colorGradingMap', lutTex);
+                this._colorGradingMaterial.setProperty('contribute', settings.colorGrading.contribute);
+                this._colorGradingTexSize.x = lutTex.width;
+                this._colorGradingTexSize.y = lutTex.height;
+                this._colorGradingMaterial.setProperty('lutTextureSize', this._colorGradingTexSize);
+
+                const isSquareMap = lutTex.width === lutTex.height;
+                if (isSquareMap) {
+                    pass = ppl.addRenderPass(width, height, 'color-grading-8x8');
+                } else {
+                    pass = ppl.addRenderPass(width, height, 'color-grading-nx1');
+                }
+                pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
+                pass.addTexture(radianceName, 'sceneColorMap');
+                pass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+                pass.addQueue(QueueHint.OPAQUE)
+                    .addFullscreenQuad(this._colorGradingMaterial, isSquareMap ? 1 : 0);
+            } else {
+                pass = ppl.addRenderPass(width, height, 'post-final-tonemap');
+                pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
+                pass.addTexture(radianceName, 'inputTexture');
+                pass.setVec4('g_platform', this._configs.platform);
+                pass.addQueue(QueueHint.OPAQUE)
+                    .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
+            }
             return pass;
         }
 
@@ -1188,6 +1224,9 @@ if (rendering) {
             this._bloomMaterial._uuid = `builtin-pipeline-post-bloom-material`;
             this._bloomMaterial.initialize({ effectName: 'pipeline/post-process/bloom1' });
 
+            this._colorGradingMaterial._uuid = `builtin-pipeline-post-color-grading-material`;
+            this._colorGradingMaterial.initialize({ effectName: 'pipeline/post-process/color-grading' });
+
             this._fxaaMaterial._uuid = `builtin-pipeline-post-fxaa-material`;
             this._fxaaMaterial.initialize({ effectName: 'pipeline/post-process/fxaa-hq' });
 
@@ -1197,6 +1236,7 @@ if (rendering) {
             if (this._copyAndTonemapMaterial.effectAsset !== null
                 && this._dofMaterial.effectAsset !== null
                 && this._bloomMaterial.effectAsset !== null
+                && this._colorGradingMaterial.effectAsset !== null
                 && this._fxaaMaterial.effectAsset !== null
                 && this._fsrMaterial.effectAsset !== null
             ) {
