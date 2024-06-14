@@ -45,10 +45,6 @@ const { ClearFlagBit, Color, Format, FormatFeatureBit, LoadOp, StoreOp, TextureT
 const { scene } = renderer;
 const { CameraUsage, CSMLevel, LightType } = scene;
 
-if (rendering) {
-
-const { QueueHint, SceneFlags, ResourceFlags, ResourceResidency } = rendering;
-
 function forwardNeedClearColor(camera: renderer.scene.Camera): boolean {
     return !!(camera.clearFlag & (ClearFlagBit.COLOR | (ClearFlagBit.STENCIL << 1)));
 }
@@ -81,6 +77,121 @@ function getCsmMainLightViewport(
     vp.width = Math.max(1, vp.width);
     vp.height = Math.max(1, vp.height);
 }
+
+class PipelineConfigs {
+    isWeb = false;
+    isMobile = false;
+    isHDR = false;
+    useFloatOutput = false;
+    toneMappingType = 0; // 0: ACES, 1: None
+    shadowMapFormat = Format.R32F;
+    shadowMapSize = new Vec2(1, 1);
+    screenSpaceSignY = 1;
+    supportDepthSample = false;
+    mobileMaxSpotLightShadowMaps = 1;
+
+    platform = new Vec4(0, 0, 0, 0);
+}
+
+function setupPipelineConfigs(
+    ppl: rendering.BasicPipeline,
+    configs: PipelineConfigs,
+): void {
+    const sampleFeature = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;
+    configs.isWeb = !sys.isNative;
+    configs.isMobile = sys.isMobile;
+    configs.isHDR = ppl.pipelineSceneData.isHDR; // Has tone mapping
+    configs.useFloatOutput = ppl.getMacroBool('CC_USE_FLOAT_OUTPUT');
+    configs.toneMappingType = ppl.pipelineSceneData.postSettings.toneMappingType;
+    configs.shadowMapFormat = pipeline.supportsR32FloatTexture(ppl.device) ? Format.R32F : Format.RGBA8;
+    configs.shadowMapSize.set(ppl.pipelineSceneData.shadows.size);
+    configs.screenSpaceSignY = ppl.device.capabilities.screenSpaceSignY;
+    configs.supportDepthSample = (ppl.device.getFormatFeatures(Format.DEPTH_STENCIL) & sampleFeature) === sampleFeature;
+
+    const device = ppl.device;
+    configs.platform.x = configs.isMobile ? 1.0 : 0.0;
+    configs.platform.w = (device.capabilities.screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
+}
+
+const defaultSettings = makePipelineSettings();
+
+class CameraConfigs {
+    enableShadowMap = false;
+    enablePostProcess = false;
+    enableProfiler = false;
+    enableShadingScale = false;
+    enableMSAA = false;
+    enableFSR = false;
+    singleForwardRadiancePass = false;
+    shadingScale = 0.5;
+    pipelineSettings: PipelineSettings = defaultSettings;
+}
+
+function isPostProcessNeeded(
+    pipelineConfigs: PipelineConfigs,
+    settings: PipelineSettings,
+    camera: renderer.scene.Camera,
+): boolean {
+    return pipelineConfigs.useFloatOutput
+        && camera.usePostProcess
+        && (settings.depthOfField.enabled
+        || settings.bloom.enabled
+        || settings.fxaa.enabled);
+}
+
+function setupCameraConfigs(
+    camera: renderer.scene.Camera,
+    pipelineConfigs: PipelineConfigs,
+    cameraConfigs: CameraConfigs,
+): void {
+    const isMainGameWindow: boolean = camera.cameraUsage === CameraUsage.GAME && !!camera.window.swapchain;
+    const isEditorView: boolean = camera.cameraUsage === CameraUsage.SCENE_VIEW || camera.cameraUsage === CameraUsage.PREVIEW;
+
+    cameraConfigs.enableShadowMap = camera.scene
+        ? camera.scene.mainLight !== null && camera.scene.mainLight.shadowEnabled
+        : false;
+
+    cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
+
+    cameraConfigs.pipelineSettings = camera.pipelineSettings
+        ? camera.pipelineSettings : defaultSettings;
+
+    cameraConfigs.enablePostProcess
+        = isPostProcessNeeded(pipelineConfigs, cameraConfigs.pipelineSettings, camera)
+        && (isMainGameWindow || isEditorView);
+
+    if (isEditorView) {
+        const editorSettings = rendering.getEditorPipelineSettings();
+        const pipelineCamera = rendering.getEditorPipelineCamera();
+        if (editorSettings && pipelineCamera) {
+            cameraConfigs.pipelineSettings = editorSettings;
+            cameraConfigs.enablePostProcess = isPostProcessNeeded(
+                pipelineConfigs, cameraConfigs.pipelineSettings, pipelineCamera);
+        }
+    }
+
+    // MSAA
+    cameraConfigs.enableMSAA = cameraConfigs.pipelineSettings.msaa.enabled
+        && !pipelineConfigs.isWeb;
+
+    // Shading scale
+    cameraConfigs.shadingScale = cameraConfigs.pipelineSettings.shadingScale;
+    cameraConfigs.enableShadingScale = cameraConfigs.pipelineSettings.enableShadingScale
+        && cameraConfigs.shadingScale !== 1.0;
+
+    // FSR (Depend on Shading scale)
+    cameraConfigs.enableFSR = cameraConfigs.pipelineSettings.fsr.enabled
+        && cameraConfigs.enableShadingScale
+        && cameraConfigs.shadingScale < 1.0;
+
+    // Forward rendering (Depend on MSAA and TBR)
+    cameraConfigs.singleForwardRadiancePass
+        = pipelineConfigs.isMobile || cameraConfigs.enableMSAA;
+}
+
+if (rendering) {
+
+const { QueueHint, SceneFlags, ResourceFlags, ResourceResidency } = rendering;
 
 class ForwardLighting {
     // Active lights
@@ -262,117 +373,6 @@ class ForwardLighting {
     public isMultipleLightPassesNeeded(): boolean {
         return this.shadowEnabledSpotLights.length > 0;
     }
-}
-
-class PipelineConfigs {
-    isWeb = false;
-    isMobile = false;
-    isHDR = false;
-    useFloatOutput = false;
-    toneMappingType = 0; // 0: ACES, 1: None
-    shadowMapFormat = Format.R32F;
-    shadowMapSize = new Vec2(1, 1);
-    screenSpaceSignY = 1;
-    supportDepthSample = false;
-    mobileMaxSpotLightShadowMaps = 1;
-
-    platform = new Vec4(0, 0, 0, 0);
-}
-
-function setupPipelineConfigs(
-    ppl: rendering.BasicPipeline,
-    configs: PipelineConfigs,
-): void {
-    const sampleFeature = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;
-    configs.isWeb = !sys.isNative;
-    configs.isMobile = sys.isMobile;
-    configs.isHDR = ppl.pipelineSceneData.isHDR; // Has tone mapping
-    configs.useFloatOutput = ppl.getMacroBool('CC_USE_FLOAT_OUTPUT');
-    configs.toneMappingType = ppl.pipelineSceneData.postSettings.toneMappingType;
-    configs.shadowMapFormat = pipeline.supportsR32FloatTexture(ppl.device) ? Format.R32F : Format.RGBA8;
-    configs.shadowMapSize.set(ppl.pipelineSceneData.shadows.size);
-    configs.screenSpaceSignY = ppl.device.capabilities.screenSpaceSignY;
-    configs.supportDepthSample = (ppl.device.getFormatFeatures(Format.DEPTH_STENCIL) & sampleFeature) === sampleFeature;
-
-    const device = ppl.device;
-    configs.platform.x = configs.isMobile ? 1.0 : 0.0;
-    configs.platform.w = (device.capabilities.screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
-}
-
-const defaultSettings = makePipelineSettings();
-
-class CameraConfigs {
-    enableShadowMap = false;
-    enablePostProcess = false;
-    enableProfiler = false;
-    enableShadingScale = false;
-    enableMSAA = false;
-    enableFSR = false;
-    singleForwardRadiancePass = false;
-    shadingScale = 0.5;
-    pipelineSettings: PipelineSettings = defaultSettings;
-}
-
-function isPostProcessNeeded(
-    pipelineConfigs: PipelineConfigs,
-    settings: PipelineSettings,
-    camera: renderer.scene.Camera,
-): boolean {
-    return pipelineConfigs.useFloatOutput
-        && camera.usePostProcess
-        && (settings.depthOfField.enabled
-        || settings.bloom.enabled
-        || settings.fxaa.enabled);
-}
-
-function setupCameraConfigs(
-    camera: renderer.scene.Camera,
-    pipelineConfigs: PipelineConfigs,
-    cameraConfigs: CameraConfigs,
-): void {
-    const isMainGameWindow: boolean = camera.cameraUsage === CameraUsage.GAME && !!camera.window.swapchain;
-    const isEditorView: boolean = camera.cameraUsage === CameraUsage.SCENE_VIEW || camera.cameraUsage === CameraUsage.PREVIEW;
-
-    cameraConfigs.enableShadowMap = camera.scene
-        ? camera.scene.mainLight !== null && camera.scene.mainLight.shadowEnabled
-        : false;
-
-    cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
-
-    cameraConfigs.pipelineSettings = camera.pipelineSettings
-        ? camera.pipelineSettings : defaultSettings;
-
-    cameraConfigs.enablePostProcess
-        = isPostProcessNeeded(pipelineConfigs, cameraConfigs.pipelineSettings, camera)
-        && (isMainGameWindow || isEditorView);
-
-    if (isEditorView) {
-        const editorSettings = rendering.getEditorPipelineSettings();
-        const pipelineCamera = rendering.getEditorPipelineCamera();
-        if (editorSettings && pipelineCamera) {
-            cameraConfigs.pipelineSettings = editorSettings;
-            cameraConfigs.enablePostProcess = isPostProcessNeeded(
-                pipelineConfigs, cameraConfigs.pipelineSettings, pipelineCamera);
-        }
-    }
-
-    // MSAA
-    cameraConfigs.enableMSAA = cameraConfigs.pipelineSettings.msaa.enabled
-        && !pipelineConfigs.isWeb;
-
-    // Shading scale
-    cameraConfigs.shadingScale = cameraConfigs.pipelineSettings.shadingScale;
-    cameraConfigs.enableShadingScale = cameraConfigs.pipelineSettings.enableShadingScale
-        && cameraConfigs.shadingScale !== 1.0;
-
-    // FSR (Depend on Shading scale)
-    cameraConfigs.enableFSR = cameraConfigs.pipelineSettings.fsr.enabled
-        && cameraConfigs.enableShadingScale
-        && cameraConfigs.shadingScale < 1.0;
-
-    // Forward rendering (Depend on MSAA and TBR)
-    cameraConfigs.singleForwardRadiancePass
-        = pipelineConfigs.isMobile || cameraConfigs.enableMSAA;
 }
 
 class BuiltinPipeline implements rendering.PipelineBuilder {
@@ -624,16 +624,15 @@ class BuiltinPipeline implements rendering.PipelineBuilder {
                     width, height, radianceName,
                     nativeWidth, nativeHeight, colorName);
             }
-        } else { // LDR
-            if (this._cameraConfigs.enableShadingScale) { // LDR (Size is scaled)
-                this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
-                lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
-                    width, height, radianceName,
-                    nativeWidth, nativeHeight, colorName);
-            } else { // LDR (Size is not scaled)
-                lastPass = this._addForwardRadiancePasses(ppl, id, camera, nativeWidth, nativeHeight, mainLight, colorName, depthStencilName);
-            }
+        } else if (this._cameraConfigs.enableShadingScale) { // LDR (Size is scaled)
+            this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
+            lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
+                width, height, radianceName,
+                nativeWidth, nativeHeight, colorName);
+        } else { // LDR (Size is not scaled)
+            lastPass = this._addForwardRadiancePasses(ppl, id, camera, nativeWidth, nativeHeight, mainLight, colorName, depthStencilName);
         }
+
         // UI size is not scaled, does not have AA
         this._addUIQueue(camera, lastPass);
     }
