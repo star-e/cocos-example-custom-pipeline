@@ -285,7 +285,11 @@ if (rendering) {
                 );
             }
         }
-        public addSpotlightShadowPasses(ppl: rendering.BasicPipeline, camera: renderer.scene.Camera, maxNumShadowMaps: number): void {
+        public addSpotlightShadowPasses(
+            ppl: rendering.BasicPipeline,
+            camera: renderer.scene.Camera,
+            maxNumShadowMaps: number,
+        ): void {
             let i = 0;
             for (const light of this.shadowEnabledSpotLights) {
                 const shadowMapSize = ppl.pipelineSceneData.shadows.size;
@@ -408,7 +412,13 @@ if (rendering) {
         // ----------------------------------------------------------------
         // Interface
         // ----------------------------------------------------------------
-        windowResize(ppl: rendering.BasicPipeline, window: renderer.RenderWindow, camera: renderer.scene.Camera, nativeWidth: number, nativeHeight: number): void {
+        windowResize(
+            ppl: rendering.BasicPipeline,
+            window: renderer.RenderWindow,
+            camera: renderer.scene.Camera,
+            nativeWidth: number,
+            nativeHeight: number,
+        ): void {
             setupPipelineConfigs(ppl, this._configs);
             setupCameraConfigs(camera, this._configs, this._cameraConfigs);
             const settings = this._cameraConfigs.pipelineSettings;
@@ -581,9 +591,11 @@ if (rendering) {
                         // Disable MSAA, depth stencil cannot be resolved cross-platformly
                         this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight,
                             dofRadianceName, depthStencilName, true, StoreOp.STORE);
-                        this._addDepthOfFieldPasses(ppl, settings, id, camera, width, height, dofRadianceName, depthStencilName, radianceName);
+                        this._addDepthOfFieldPasses(ppl, settings, id, camera, width, height,
+                            dofRadianceName, depthStencilName, radianceName);
                     } else {
-                        this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
+                        this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight,
+                            radianceName, depthStencilName);
                     }
                     // Bloom
                     if (settings.bloom.enabled) {
@@ -602,7 +614,8 @@ if (rendering) {
                             // Copy FXAA result to screen
                             if (this._cameraConfigs.enableFSR) {
                                 // Apply FSR
-                                lastPass = this._addFsrPass(ppl, settings, id, width, height, aaColorName, nativeWidth, nativeHeight, colorName);
+                                lastPass = this._addFsrPass(ppl, settings, id, width, height, aaColorName,
+                                    nativeWidth, nativeHeight, colorName);
                             } else {
                                 // Scale FXAA result to screen
                                 lastPass = this._addCopyPass(ppl, nativeWidth, nativeHeight, aaColorName, colorName);
@@ -619,18 +632,21 @@ if (rendering) {
                     }
                 } else {
                     // No post process, output HDR result to screen directly (Size might be scaled)
-                    this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
+                    this._addForwardRadiancePasses(ppl, id, camera,
+                        width, height, mainLight, radianceName, depthStencilName);
                     lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
                         width, height, radianceName,
                         nativeWidth, nativeHeight, colorName);
                 }
             } else if (this._cameraConfigs.enableShadingScale) { // LDR (Size is scaled)
-                this._addForwardRadiancePasses(ppl, id, camera, width, height, mainLight, radianceName, depthStencilName);
+                this._addForwardRadiancePasses(ppl, id, camera,
+                    width, height, mainLight, radianceName, depthStencilName);
                 lastPass = this._addTonemapResizeOrSuperResolutionPasses(ppl, settings, id,
                     width, height, radianceName,
                     nativeWidth, nativeHeight, colorName);
             } else { // LDR (Size is not scaled)
-                lastPass = this._addForwardRadiancePasses(ppl, id, camera, nativeWidth, nativeHeight, mainLight, colorName, depthStencilName);
+                lastPass = this._addForwardRadiancePasses(ppl, id, camera,
+                    nativeWidth, nativeHeight, mainLight, colorName, depthStencilName);
             }
 
             // UI size is not scaled, does not have AA
