@@ -812,7 +812,7 @@ if (rendering) {
                         .addFullscreenQuad(settings.copyMaterial, 1);
                 } else {
                     pass.addQueue(QueueHint.OPAQUE)
-                    .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
+                        .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
                 }
             }
             return pass;
