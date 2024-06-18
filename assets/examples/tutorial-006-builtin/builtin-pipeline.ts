@@ -137,22 +137,26 @@ function setupPostProcessConfigs(
     settings: PipelineSettings,
     cameraConfigs: CameraConfigs,
 ) {
-    cameraConfigs.enableDOF = pipelineConfigs.supportDepthSample
+    cameraConfigs.enableDOF = camera.usePostProcess
+        && pipelineConfigs.supportDepthSample
         && settings.depthOfField.enabled
         && settings.depthOfField.material !== null;
 
-    cameraConfigs.enableBloom = settings.bloom.enabled
+    cameraConfigs.enableBloom = camera.usePostProcess
+        && settings.bloom.enabled
         && settings.bloom.material !== null;
 
-    cameraConfigs.enableColorGrading = settings.colorGrading.enabled
+    cameraConfigs.enableColorGrading = camera.usePostProcess
+        && settings.colorGrading.enabled
         && settings.colorGrading.material !== null
         && settings.colorGrading.colorGradingMap !== null;
 
-    cameraConfigs.enableFXAA = settings.fxaa.enabled
+    cameraConfigs.enableFXAA = camera.usePostProcess
+        && settings.fxaa.enabled
         && settings.fxaa.material !== null;
 
-    cameraConfigs.enablePostProcess = pipelineConfigs.useFloatOutput
-        && camera.usePostProcess
+    cameraConfigs.enablePostProcess = camera.usePostProcess
+        && pipelineConfigs.useFloatOutput
         && (cameraConfigs.enableDOF
         || cameraConfigs.enableBloom
         || cameraConfigs.enableColorGrading

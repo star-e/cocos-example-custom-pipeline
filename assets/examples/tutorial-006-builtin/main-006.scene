@@ -274,7 +274,7 @@
     "_enabled": true,
     "__prefab": null,
     "settings": {
-      "enableShadingScale": false,
+      "enableShadingScale": true,
       "shadingScale": 0.7,
       "depthOfField": {
         "enabled": false,
