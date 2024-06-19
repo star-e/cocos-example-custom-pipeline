@@ -264,7 +264,7 @@
     "_id": "7dWQTpwS5LrIHnc1zAPUtf"
   },
   {
-    "__type__": "cc.BuiltinPipelineSettings",
+    "__type__": "75c9alraylJ87lbH4ADLCX9",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -273,7 +273,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "settings": {
+    "_settings": {
       "enableShadingScale": true,
       "shadingScale": 0.7,
       "depthOfField": {
@@ -334,7 +334,7 @@
       }
     },
     "_editorPreview": false,
-    "_id": "b4fFM1MtlC0aXjnnCcqr/R"
+    "_id": "26wuscpO1BZqkaU1Ga6TG3"
   },
   {
     "__type__": "cc.Node",
