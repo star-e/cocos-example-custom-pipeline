@@ -91,7 +91,7 @@ export class TutorialPipelineSettings extends Component {
         }
         if (this._editorPreview) {
             const camera = this.getComponent(Camera)!.camera;
-            rendering.setEditorPipelineSettings(this._settings, camera);
+            rendering.setEditorPipelineSettings(this._settings);
         } else {
             this._disableEditorPreview();
         }
@@ -102,7 +102,7 @@ export class TutorialPipelineSettings extends Component {
         }
         const current = rendering.getEditorPipelineSettings();
         if (current === this._settings) {
-            rendering.setEditorPipelineSettings(null, null);
+            rendering.setEditorPipelineSettings(null);
         }
     }
 
