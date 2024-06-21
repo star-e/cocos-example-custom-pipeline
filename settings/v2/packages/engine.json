@@ -9,9 +9,6 @@
       "base": {
         "_value": true
       },
-      "graphcis": {
-        "_value": true
-      },
       "gfx-webgl": {
         "_value": true
       },
@@ -132,6 +129,9 @@
         "_value": false
       },
       "custom-pipeline": {
+        "_value": true
+      },
+      "graphcis": {
         "_value": true
       },
       "graphics": {
