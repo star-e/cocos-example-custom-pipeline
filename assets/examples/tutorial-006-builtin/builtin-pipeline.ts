@@ -458,7 +458,7 @@ if (rendering) {
                 : nativeHeight;
 
             // Render Window (UI)
-            ppl.addRenderWindow(window.colorName, Format.BGRA8, nativeWidth, nativeHeight, window);
+            ppl.addRenderWindow(window.colorName, Format.RGBA8, nativeWidth, nativeHeight, window);
 
             if (this._cameraConfigs.enableFSR) {
                 ppl.addRenderTarget(`FsrColor${id}`, Format.RGBA8, nativeWidth, nativeHeight);
@@ -1093,7 +1093,7 @@ if (rendering) {
 
             const fsrColorName = `FsrColor${id}`;
 
-            const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-easu');
+            const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'post-process');
             easuPass.addRenderTarget(fsrColorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             easuPass.addTexture(ldrColorName, 'outputResultMap');
             easuPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
@@ -1101,7 +1101,7 @@ if (rendering) {
                 .addQueue(QueueHint.OPAQUE)
                 .addFullscreenQuad(fsrMaterial, 0);
 
-            const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-rcas');
+            const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'post-process');
             rcasPass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             rcasPass.addTexture(fsrColorName, 'outputResultMap');
             rcasPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w

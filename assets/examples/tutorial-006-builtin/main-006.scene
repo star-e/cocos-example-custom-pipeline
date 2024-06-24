@@ -258,7 +258,7 @@
     "_visibility": 1820327937,
     "_targetTexture": null,
     "_postProcess": null,
-    "_usePostProcess": true,
+    "_usePostProcess": false,
     "_cameraType": -1,
     "_trackingType": 0,
     "_id": "7dWQTpwS5LrIHnc1zAPUtf"
