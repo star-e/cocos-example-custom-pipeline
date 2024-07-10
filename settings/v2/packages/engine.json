@@ -1,8 +1,7 @@
 {
   "__version__": "1.0.9",
   "macroConfig": {
-    "CUSTOM_PIPELINE_NAME": "Tutorial",
-    "ENABLE_FLOAT_OUTPUT": true
+    "CUSTOM_PIPELINE_NAME": "Tutorial"
   },
   "modules": {
     "cache": {
