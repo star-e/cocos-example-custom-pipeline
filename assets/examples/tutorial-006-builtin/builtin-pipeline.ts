@@ -29,10 +29,8 @@ import {
     geometry,
     gfx,
     Layers,
-    makePipelineSettings,
     Material,
     pipeline,
-    PipelineSettings,
     renderer,
     rendering,
     sys,
@@ -43,6 +41,11 @@ import {
     PipelineEventType,
     PipelineEventProcessor,
 } from 'cc';
+
+import {
+    PipelineSettings,
+    makePipelineSettings,
+} from './builtin-pipeline-types';
 
 const { AABB, Sphere, intersect } = geometry;
 const { ClearFlagBit, Color, Format, FormatFeatureBit, LoadOp, StoreOp, TextureType, Viewport } = gfx;
@@ -84,6 +87,7 @@ function getCsmMainLightViewport(
 
 class PipelineConfigs {
     isWeb = false;
+    isWebGPU = false;
     isMobile = false;
     isHDR = false;
     useFloatOutput = false;
@@ -103,6 +107,7 @@ function setupPipelineConfigs(
 ): void {
     const sampleFeature = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;
     configs.isWeb = !sys.isNative;
+    configs.isWebGPU = (cclegacy.WebGPUDevice && cclegacy.director.root.device instanceof cclegacy.WebGPUDevice);
     configs.isMobile = sys.isMobile;
     configs.isHDR = ppl.pipelineSceneData.isHDR; // Has tone mapping
     configs.useFloatOutput = ppl.getMacroBool('CC_USE_FLOAT_OUTPUT');
@@ -114,7 +119,8 @@ function setupPipelineConfigs(
 
     const device = ppl.device;
     configs.platform.x = configs.isMobile ? 1.0 : 0.0;
-    configs.platform.w = (device.capabilities.screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
+    const screenSpaceSignY = device.capabilities.screenSpaceSignY;
+    configs.platform.w = (screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
 }
 
 const defaultSettings = makePipelineSettings();
@@ -180,7 +186,7 @@ function setupCameraConfigs(
     cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
 
     cameraConfigs.settings = camera.pipelineSettings
-        ? camera.pipelineSettings : defaultSettings;
+        ? camera.pipelineSettings as PipelineSettings : defaultSettings;
 
     setupPostProcessConfigs(pipelineConfigs, cameraConfigs.settings, cameraConfigs);
 
@@ -810,7 +816,9 @@ if (rendering) {
             for (let level = 0; level !== csmLevel; ++level) {
                 getCsmMainLightViewport(light, width, height, level, this._viewport, this._configs.screenSpaceSignY);
                 const queue = pass.addQueue(QueueHint.NONE, 'shadow-caster');
-                queue.setViewport(this._viewport);
+                if (!this._configs.isWebGPU) { // Temporary workaround for WebGPU
+                    queue.setViewport(this._viewport);
+                }
                 queue
                     .addScene(camera, SceneFlags.OPAQUE | SceneFlags.MASK | SceneFlags.SHADOW_CASTER)
                     .useLightFrustum(light, level);
@@ -1219,7 +1227,7 @@ if (rendering) {
                     colorName, depthStencilName, depthStencilStoreOp)
                 : this._addForwardMultipleRadiancePasses(ppl, id, camera, width, height, mainLight,
                     colorName, depthStencilName, depthStencilStoreOp);
-
+            this.addPlanarShadowQueues(ppl, pass, camera, mainLight);
             // ----------------------------------------------------------------
             // Forward Lighting (Blend)
             // ----------------------------------------------------------------
@@ -1281,7 +1289,15 @@ if (rendering) {
 
             return pass;
         }
-
+        public addPlanarShadowQueues(ppl: rendering.BasicPipeline, pass: rendering.BasicRenderPassBuilder,
+            camera: renderer.scene.Camera, mainLight: renderer.scene.DirectionalLight | null) {
+            pass.addQueue(QueueHint.BLEND, 'planar-shadow')
+                .addScene(
+                    camera,
+                    SceneFlags.SHADOW_CASTER | SceneFlags.PLANAR_SHADOW | SceneFlags.BLEND,
+                    mainLight || undefined
+                );
+        }
         private _addForwardMultipleRadiancePasses(
             ppl: rendering.BasicPipeline,
             id: number,
