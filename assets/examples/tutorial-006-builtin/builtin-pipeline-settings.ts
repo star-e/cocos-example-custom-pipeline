@@ -102,7 +102,7 @@ export class TutorialPipelineSettings extends Component {
         if (rendering === undefined) {
             return;
         }
-        const current = rendering.getEditorPipelineSettings();
+        const current = rendering.getEditorPipelineSettings() as PipelineSettings | null;
         if (current === this._settings) {
             rendering.setEditorPipelineSettings(null);
         }
