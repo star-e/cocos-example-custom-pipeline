@@ -575,7 +575,8 @@ if (rendering) {
                 }
                 // Setup camera configs
                 setupCameraConfigs(camera, this._configs, this._cameraConfigs);
-                // log(`Setup camera: ${camera.node!.name}, window: ${camera.window.renderWindowId}, isFull: ${this._cameraConfigs.useFullPipeline}, size: ${camera.window.width}x${camera.window.height}`);
+                // log(`Setup camera: ${camera.node!.name}, window: ${camera.window.renderWindowId}, isFull: ${this._cameraConfigs.useFullPipeline}, `
+                //     + `size: ${camera.window.width}x${camera.window.height}`);
 
                 this._pipelineEvent.emit(PipelineEventType.RENDER_CAMERA_BEGIN, camera);
 
