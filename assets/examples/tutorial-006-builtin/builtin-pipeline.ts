@@ -92,8 +92,10 @@ class PipelineConfigs {
     isHDR = false;
     useFloatOutput = false;
     toneMappingType = 0; // 0: ACES, 1: None
+    shadowEnabled = false;
     shadowMapFormat = Format.R32F;
     shadowMapSize = new Vec2(1, 1);
+    usePlanarShadow = false;
     screenSpaceSignY = 1;
     supportDepthSample = false;
     mobileMaxSpotLightShadowMaps = 1;
@@ -105,28 +107,36 @@ function setupPipelineConfigs(
     ppl: rendering.BasicPipeline,
     configs: PipelineConfigs,
 ): void {
+    // Platform
     const sampleFeature = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;
     configs.isWeb = !sys.isNative;
     configs.isWebGPU = (cclegacy.WebGPUDevice && cclegacy.director.root.device instanceof cclegacy.WebGPUDevice);
     configs.isMobile = sys.isMobile;
+    // Rendering
     configs.isHDR = ppl.pipelineSceneData.isHDR; // Has tone mapping
     configs.useFloatOutput = ppl.getMacroBool('CC_USE_FLOAT_OUTPUT');
     configs.toneMappingType = ppl.pipelineSceneData.postSettings.toneMappingType;
+    // Shadow
+    const shadowInfo = ppl.pipelineSceneData.shadows;
+    configs.shadowEnabled = shadowInfo.enabled;
     configs.shadowMapFormat = pipeline.supportsR32FloatTexture(ppl.device) ? Format.R32F : Format.RGBA8;
-    configs.shadowMapSize.set(ppl.pipelineSceneData.shadows.size);
+    configs.shadowMapSize.set(shadowInfo.size);
+    configs.usePlanarShadow = shadowInfo.enabled && shadowInfo.type === renderer.scene.ShadowType.Planar;
+    // Device
     configs.screenSpaceSignY = ppl.device.capabilities.screenSpaceSignY;
     configs.supportDepthSample = (ppl.device.getFormatFeatures(Format.DEPTH_STENCIL) & sampleFeature) === sampleFeature;
-
+    // Constants
     const device = ppl.device;
-    configs.platform.x = configs.isMobile ? 1.0 : 0.0;
     const screenSpaceSignY = device.capabilities.screenSpaceSignY;
+    configs.platform.x = configs.isMobile ? 1.0 : 0.0;
     configs.platform.w = (screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
 }
 
 const defaultSettings = makePipelineSettings();
 
 class CameraConfigs {
-    enableShadowMap = false;
+    enableMainLightShadowMap = false;
+    enableMainLightPlanarShadowMap = false;
     enablePostProcess = false;
     enableProfiler = false;
     enableShadingScale = false;
@@ -178,9 +188,17 @@ function setupCameraConfigs(
 
     cameraConfigs.useFullPipeline = (camera.visibility & (Layers.Enum.DEFAULT)) !== 0;
 
-    cameraConfigs.enableShadowMap = camera.scene
-        ? camera.scene.mainLight !== null && camera.scene.mainLight.shadowEnabled
-        : false;
+    cameraConfigs.enableMainLightShadowMap = pipelineConfigs.shadowEnabled
+        && !pipelineConfigs.usePlanarShadow
+        && camera.scene !== null
+        && camera.scene.mainLight !== null
+        && camera.scene.mainLight.shadowEnabled;
+
+    cameraConfigs.enableMainLightPlanarShadowMap = pipelineConfigs.shadowEnabled
+        && pipelineConfigs.usePlanarShadow
+        && camera.scene !== null
+        && camera.scene.mainLight !== null
+        && camera.scene.mainLight.shadowEnabled;
 
     cameraConfigs.enableProfiler = DEBUG && isMainGameWindow;
 
@@ -668,7 +686,7 @@ if (rendering) {
             this.forwardLighting.cullLights(scene, camera.frustum);
 
             // Main Directional light CSM Shadow Map
-            if (this._cameraConfigs.enableShadowMap) {
+            if (this._cameraConfigs.enableMainLightShadowMap) {
                 this._addCascadedShadowMapPass(ppl, id, mainLight!, camera);
             }
 
@@ -921,7 +939,7 @@ if (rendering) {
             }
 
             // Set shadow map if enabled
-            if (this._cameraConfigs.enableShadowMap) {
+            if (this._cameraConfigs.enableMainLightShadowMap) {
                 pass.addTexture(`ShadowMap${id}`, 'cc_shadowMap');
             }
 
@@ -1229,7 +1247,12 @@ if (rendering) {
                     colorName, depthStencilName, depthStencilStoreOp)
                 : this._addForwardMultipleRadiancePasses(ppl, id, camera, width, height, mainLight,
                     colorName, depthStencilName, depthStencilStoreOp);
-            this.addPlanarShadowQueues(ppl, pass, camera, mainLight);
+
+            // Planar Shadow
+            if (this._cameraConfigs.enableMainLightPlanarShadowMap) {
+                this.addPlanarShadowQueue(camera, mainLight, pass);
+            }
+
             // ----------------------------------------------------------------
             // Forward Lighting (Blend)
             // ----------------------------------------------------------------
@@ -1291,13 +1314,16 @@ if (rendering) {
 
             return pass;
         }
-        public addPlanarShadowQueues(ppl: rendering.BasicPipeline, pass: rendering.BasicRenderPassBuilder,
-            camera: renderer.scene.Camera, mainLight: renderer.scene.DirectionalLight | null) {
+        public addPlanarShadowQueue(
+            camera: renderer.scene.Camera,
+            mainLight: renderer.scene.DirectionalLight | null,
+            pass: rendering.BasicRenderPassBuilder,
+        ) {
             pass.addQueue(QueueHint.BLEND, 'planar-shadow')
                 .addScene(
                     camera,
                     SceneFlags.SHADOW_CASTER | SceneFlags.PLANAR_SHADOW | SceneFlags.BLEND,
-                    mainLight || undefined
+                    mainLight || undefined,
                 );
         }
         private _addForwardMultipleRadiancePasses(
