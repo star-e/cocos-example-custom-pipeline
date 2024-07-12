@@ -40,7 +40,7 @@ import {
     PipelineSettings,
     makePipelineSettings,
     fillRequiredPipelineSettings,
-} from './builtin-pipeline-types';
+} from './tutorial-pipeline-types';
 
 const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
 

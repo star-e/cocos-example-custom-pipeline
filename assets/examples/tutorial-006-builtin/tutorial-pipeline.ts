@@ -45,7 +45,7 @@ import {
 import {
     PipelineSettings,
     makePipelineSettings,
-} from './builtin-pipeline-types';
+} from './tutorial-pipeline-types';
 
 const { AABB, Sphere, intersect } = geometry;
 const { ClearFlagBit, Color, Format, FormatFeatureBit, LoadOp, StoreOp, TextureType, Viewport } = gfx;
