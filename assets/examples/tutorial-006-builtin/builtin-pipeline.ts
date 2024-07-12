@@ -723,7 +723,7 @@ if (rendering) {
                                 nativeWidth, nativeHeight, colorName);
                         } else {
                             // Scale FXAA result to screen
-                            lastPass = this._addCopyPass(ppl, settings.copyMaterial,
+                            lastPass = this._addCopyPass(ppl,
                                 nativeWidth, nativeHeight, aaColorName, colorName);
                         }
                     } else {
@@ -824,23 +824,17 @@ if (rendering) {
 
         private _addCopyPass(
             ppl: rendering.BasicPipeline,
-            copyMaterial: Material | null,
             width: number,
             height: number,
             input: string,
             output: string,
         ): rendering.BasicRenderPassBuilder {
-            const pass = ppl.addRenderPass(width, height, 'post-copy');
+            const pass = ppl.addRenderPass(width, height, 'cc-tone-mapping');
             pass.addRenderTarget(output, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             pass.addTexture(input, 'inputTexture');
             pass.setVec4('g_platform', this._configs.platform);
-            if (copyMaterial) {
-                pass.addQueue(QueueHint.OPAQUE)
-                    .addFullscreenQuad(copyMaterial, 2);
-            } else {
-                pass.addQueue(QueueHint.OPAQUE)
-                    .addFullscreenQuad(this._copyAndTonemapMaterial, 2);
-            }
+            pass.addQueue(QueueHint.OPAQUE)
+                .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
             return pass;
         }
 
@@ -876,16 +870,16 @@ if (rendering) {
                 pass.addQueue(QueueHint.OPAQUE)
                     .addFullscreenQuad(settings.colorGrading.material, isSquareMap ? 1 : 0);
             } else {
-                pass = ppl.addRenderPass(width, height, 'post-final-tonemap');
+                pass = ppl.addRenderPass(width, height, 'cc-tone-mapping');
                 pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
                 pass.addTexture(radianceName, 'inputTexture');
                 pass.setVec4('g_platform', this._configs.platform);
-                if (settings.copyMaterial) {
+                if (settings.toneMapping.material) {
                     pass.addQueue(QueueHint.OPAQUE)
-                        .addFullscreenQuad(settings.copyMaterial, 1);
+                        .addFullscreenQuad(settings.toneMapping.material, 0);
                 } else {
                     pass.addQueue(QueueHint.OPAQUE)
-                        .addFullscreenQuad(this._copyAndTonemapMaterial, 1);
+                        .addFullscreenQuad(this._copyAndTonemapMaterial, 0);
                 }
             }
             return pass;
@@ -1346,8 +1340,8 @@ if (rendering) {
             setupPipelineConfigs(ppl, this._configs);
 
             // When add new effect asset, please add its uuid to the dependentAssets in cc.config.json.
-            this._copyAndTonemapMaterial._uuid = `builtin-pipeline-post-final-tonemap-material`;
-            this._copyAndTonemapMaterial.initialize({ effectName: 'pipeline/post-process/post-final' });
+            this._copyAndTonemapMaterial._uuid = `builtin-pipeline-tone-mapping-material`;
+            this._copyAndTonemapMaterial.initialize({ effectName: 'pipeline/post-process/tone-mapping' });
 
             if (this._copyAndTonemapMaterial.effectAsset !== null) {
                 this._initialized = true;
