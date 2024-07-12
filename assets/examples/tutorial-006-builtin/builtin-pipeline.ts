@@ -859,20 +859,21 @@ if (rendering) {
                 const lutTex = settings.colorGrading.colorGradingMap;
 
                 settings.colorGrading.material.setProperty('colorGradingMap', lutTex);
-                settings.colorGrading.material.setProperty('contribute', settings.colorGrading.contribute);
+
                 this._colorGradingTexSize.x = lutTex.width;
                 this._colorGradingTexSize.y = lutTex.height;
-                settings.colorGrading.material.setProperty('lutTextureSize', this._colorGradingTexSize);
 
                 const isSquareMap = lutTex.width === lutTex.height;
                 if (isSquareMap) {
-                    pass = ppl.addRenderPass(width, height, 'color-grading-8x8');
+                    pass = ppl.addRenderPass(width, height, 'color-grading1-8x8');
                 } else {
-                    pass = ppl.addRenderPass(width, height, 'color-grading-nx1');
+                    pass = ppl.addRenderPass(width, height, 'color-grading1-nx1');
                 }
                 pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
                 pass.addTexture(radianceName, 'sceneColorMap');
-                pass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+                pass.setVec4('g_platform', this._configs.platform);
+                pass.setVec2('lutTextureSize', this._colorGradingTexSize);
+                pass.setFloat('contribute', settings.colorGrading.contribute);
                 pass.addQueue(QueueHint.OPAQUE)
                     .addFullscreenQuad(settings.colorGrading.material, isSquareMap ? 1 : 0);
             } else {
