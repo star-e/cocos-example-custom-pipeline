@@ -131,7 +131,7 @@
         "_value": true
       },
       "legacy-pipeline": {
-        "_value": true
+        "_value": false
       },
       "graphcis": {
         "_value": true
@@ -153,7 +153,6 @@
       "gfx-webgl",
       "gfx-webgl2",
       "intersection-2d",
-      "legacy-pipeline",
       "light-probe",
       "marionette",
       "particle",
