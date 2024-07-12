@@ -857,7 +857,6 @@ if (rendering) {
                 && settings.colorGrading.material !== null
                 && settings.colorGrading.colorGradingMap !== null) {
                 const lutTex = settings.colorGrading.colorGradingMap;
-
                 settings.colorGrading.material.setProperty('colorGradingMap', lutTex);
 
                 this._colorGradingTexSize.x = lutTex.width;
@@ -1131,28 +1130,29 @@ if (rendering) {
             nativeHeight: number,
             colorName: string,
         ): rendering.BasicRenderPassBuilder {
-            this._fsrParams.x = clamp(1.0 - settings.fsr.sharpness, 0.02, 0.98);
             this._fsrTexSize.x = width;
             this._fsrTexSize.y = height;
             this._fsrTexSize.z = nativeWidth;
             this._fsrTexSize.w = nativeHeight;
-            fsrMaterial.setProperty('fsrParams', this._fsrParams);
-            fsrMaterial.setProperty('texSize', this._fsrTexSize);
+            this._fsrParams.x = clamp(1.0 - settings.fsr.sharpness, 0.02, 0.98);
 
             const fsrColorName = `FsrColor${id}`;
 
-            const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'post-process');
+            const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-easu');
             easuPass.addRenderTarget(fsrColorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             easuPass.addTexture(ldrColorName, 'outputResultMap');
-            easuPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+            easuPass.setVec4('g_platform', this._configs.platform);
+            easuPass.setVec4('texSize', this._fsrTexSize);
             easuPass
                 .addQueue(QueueHint.OPAQUE)
                 .addFullscreenQuad(fsrMaterial, 0);
 
-            const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'post-process');
+            const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'fsr-rcas');
             rcasPass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             rcasPass.addTexture(fsrColorName, 'outputResultMap');
-            rcasPass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+            rcasPass.setVec4('g_platform', this._configs.platform);
+            rcasPass.setVec4('texSize', this._fsrTexSize);
+            rcasPass.setVec4('fsrParams', this._fsrParams);
             rcasPass
                 .addQueue(QueueHint.OPAQUE)
                 .addFullscreenQuad(fsrMaterial, 1);
