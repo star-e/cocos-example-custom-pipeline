@@ -432,6 +432,8 @@ if (rendering) {
         private readonly _bloomTexNames: Array<string> = [];
         // Color Grading
         private readonly _colorGradingTexSize = new Vec2(0, 0);
+        // FXAA
+        private readonly _fxaaParams = new Vec4(0, 0, 0, 0);
         // FSR
         private readonly _fsrParams = new Vec4(0, 0, 0, 0);
         private readonly _fsrTexSize = new Vec4(0, 0, 0, 0);
@@ -1158,12 +1160,15 @@ if (rendering) {
             ldrColorName: string,
             colorName: string,
         ): rendering.BasicRenderPassBuilder {
-            fxaaMaterial.setProperty('texSize', new Vec4(width, height, 1 / width, 1 / height));
-
-            const pass = ppl.addRenderPass(width, height, 'fxaa');
+            this._fxaaParams.x = width;
+            this._fxaaParams.y = height;
+            this._fxaaParams.z = 1 / width;
+            this._fxaaParams.w = 1 / height;
+            const pass = ppl.addRenderPass(width, height, 'fxaa1');
             pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             pass.addTexture(ldrColorName, 'sceneColorMap');
-            pass.setVec4('cc_cameraPos', this._configs.platform); // We only use cc_cameraPos.w
+            pass.setVec4('g_platform', this._configs.platform);
+            pass.setVec4('texSize', this._fxaaParams);
             pass.addQueue(QueueHint.OPAQUE)
                 .addFullscreenQuad(fxaaMaterial, 0);
             return pass;
