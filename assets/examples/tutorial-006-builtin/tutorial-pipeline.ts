@@ -711,7 +711,7 @@ if (rendering) {
                 this.forwardLighting.addSpotlightShadowPasses(ppl, camera, this._configs.mobileMaxSpotLightShadowMaps);
             }
 
-            this._tryAddReflectionProbePasses(ppl, id, mainLight);
+            this._tryAddReflectionProbePasses(ppl, id, mainLight, camera.scene);
 
             // Forward Lighting
             let lastPass: rendering.BasicRenderPassBuilder;
@@ -930,6 +930,7 @@ if (rendering) {
             depthStencilName: string,
             depthStencilStoreOp: gfx.StoreOp,
             mainLight: renderer.scene.DirectionalLight | null,
+            scene: renderer.RenderScene | null = null,
         ): void {
             // set viewport
             pass.setViewport(this._viewport);
@@ -966,7 +967,10 @@ if (rendering) {
 
             // add opaque and mask queue
             pass.addQueue(QueueHint.NONE) // Currently we put OPAQUE and MASK into one queue, so QueueHint is NONE
-                .addScene(camera, SceneFlags.OPAQUE | SceneFlags.MASK, mainLight || undefined);
+                .addScene(camera,
+                    SceneFlags.OPAQUE | SceneFlags.MASK,
+                    mainLight || undefined,
+                    scene ? scene : undefined);
         }
 
         private _addDepthOfFieldPasses(
@@ -1038,7 +1042,7 @@ if (rendering) {
             filterPass.addRenderTarget(filterName, LoadOp.CLEAR, StoreOp.STORE, this._clearColorTransparentBlack);
             filterPass.addTexture(bokehName, 'bokehTex');
             filterPass.setVec4('g_platform', this._configs.platform);
-            filterPass.setVec4('mainTexTexelSize', this._cocTexSize)
+            filterPass.setVec4('mainTexTexelSize', this._cocTexSize);
             filterPass
                 .addQueue(QueueHint.OPAQUE)
                 .addFullscreenQuad(dofMaterial, 3);
@@ -1376,7 +1380,9 @@ if (rendering) {
         }
 
         private _tryAddReflectionProbePasses(ppl: rendering.BasicPipeline, id: number,
-            mainLight: renderer.scene.DirectionalLight | null): void {
+            mainLight: renderer.scene.DirectionalLight | null,
+            scene: renderer.RenderScene | null,
+        ): void {
             const reflectionProbeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager;
             const probes = reflectionProbeManager.getProbes();
             const maxProbeCount = 4;
@@ -1398,7 +1404,7 @@ if (rendering) {
                         this._cameraConfigs.radianceFormat, width, height, window);
                     ppl.addDepthStencil(depthStencilName,
                         gfx.Format.DEPTH_STENCIL, width, height, ResourceResidency.MEMORYLESS);
-                    
+
                     // Rendering
                     const probePass = ppl.addRenderPass(width, height, 'default');
                     probePass.name = `PlanarProbe${probeID}`;
@@ -1407,7 +1413,7 @@ if (rendering) {
                     this._viewport.width = width;
                     this._viewport.height = height;
                     this._buildForwardMainLightPass(probePass, id, probe.camera,
-                        colorName, depthStencilName, StoreOp.DISCARD, mainLight);
+                        colorName, depthStencilName, StoreOp.DISCARD, mainLight, scene);
                 } else if (EDITOR) {
                     // for (let faceIdx = 0; faceIdx < probe.bakedCubeTextures.length; faceIdx++) {
                     //     probe.updateCameraDir(faceIdx);
