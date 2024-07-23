@@ -1,7 +1,7 @@
 {
-  "__version__": "1.0.9",
+  "__version__": "1.0.10",
   "macroConfig": {
-    "CUSTOM_PIPELINE_NAME": "Tutorial"
+    "CUSTOM_PIPELINE_NAME": "BuiltinDev"
   },
   "modules": {
     "cache": {
@@ -175,5 +175,8 @@
       "value": false,
       "version": ""
     }
+  },
+  "graphics": {
+    "customPipeline": true
   }
 }

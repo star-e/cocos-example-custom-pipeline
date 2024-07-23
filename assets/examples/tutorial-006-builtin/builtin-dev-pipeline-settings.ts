@@ -40,16 +40,16 @@ import {
     PipelineSettings,
     makePipelineSettings,
     fillRequiredPipelineSettings,
-} from './tutorial-pipeline-types';
+} from './builtin-pipeline-types';
 
 const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
 
-@ccclass('TutorialPipelineSettings')
-@menu('Rendering/TutorialPipelineSettings')
+@ccclass('BuiltinDevPipelineSettings')
+@menu('Rendering/BuiltinDevPipelineSettings')
 @requireComponent(Camera)
 @disallowMultiple
 @executeInEditMode
-export class TutorialPipelineSettings extends Component {
+export class BuiltinDevPipelineSettings extends Component {
     @property
     private readonly _settings: PipelineSettings = makePipelineSettings();
 

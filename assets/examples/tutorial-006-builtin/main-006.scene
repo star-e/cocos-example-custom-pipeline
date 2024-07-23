@@ -278,7 +278,7 @@
     "__prefab": null,
     "_settings": {
       "msaa": {
-        "enabled": true,
+        "enabled": false,
         "sampleCount": 4
       },
       "enableShadingScale": false,
@@ -294,7 +294,7 @@
         }
       },
       "bloom": {
-        "enabled": true,
+        "enabled": false,
         "enableAlphaMask": false,
         "iterations": 3,
         "threshold": 0.8,
@@ -331,7 +331,7 @@
         }
       },
       "fxaa": {
-        "enabled": true,
+        "enabled": false,
         "material": {
           "__uuid__": "025b97cc-7a78-444c-96f9-d1627ac0b44c",
           "__expectedType__": "cc.Material"

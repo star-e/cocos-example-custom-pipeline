@@ -46,7 +46,7 @@ import {
 import {
     PipelineSettings,
     makePipelineSettings,
-} from './tutorial-pipeline-types';
+} from './builtin-pipeline-types';
 
 const { AABB, Sphere, intersect } = geometry;
 const { ClearFlagBit, Color, Format, FormatFeatureBit, LoadOp, StoreOp, TextureType, Viewport } = gfx;
@@ -1507,6 +1507,6 @@ if (rendering) {
         }
     }
 
-    rendering.setCustomPipeline('Tutorial', new BuiltinPipelineBuilder());
+    rendering.setCustomPipeline('BuiltinDev', new BuiltinPipelineBuilder());
 
 } // if (rendering)
