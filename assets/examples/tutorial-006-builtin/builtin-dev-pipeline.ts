@@ -46,7 +46,6 @@ import {
 
 import {
     PipelineSettings,
-    makePipelineSettings,
 } from './builtin-pipeline-types';
 
 const { AABB, Sphere, intersect } = geometry;
@@ -137,7 +136,7 @@ function setupPipelineConfigs(
     configs.platform.w = (screenSpaceSignY * 0.5 + 0.5) << 1 | (device.capabilities.clipSpaceSignY * 0.5 + 0.5);
 }
 
-const defaultSettings = makePipelineSettings();
+const defaultSettings = new PipelineSettings();
 
 class CameraConfigs {
     colorName = '';
@@ -1242,7 +1241,7 @@ if (rendering) {
         }
 
         private _addUIQueue(camera: renderer.scene.Camera, pass: rendering.BasicRenderPassBuilder): void {
-            let flags = SceneFlags.UI;
+            let flags = SceneFlags.UI | SceneFlags.GEOMETRY;
             if (this._cameraConfigs.enableProfiler) {
                 flags |= SceneFlags.PROFILER;
                 pass.showStatistics = true;
