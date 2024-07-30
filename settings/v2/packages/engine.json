@@ -160,6 +160,7 @@
       "animation",
       "audio",
       "base",
+      "custom-pipeline",
       "dragon-bones",
       "geometry-renderer",
       "gfx-webgl",
@@ -181,8 +182,7 @@
       "ui",
       "video",
       "websocket",
-      "webview",
-      "custom-pipeline"
+      "webview"
     ],
     "noDeprecatedFeatures": {
       "value": false,
