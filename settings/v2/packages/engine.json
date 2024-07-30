@@ -140,6 +140,9 @@
       "custom-pipeline": {
         "_value": true
       },
+      "custom-pipeline-post-process": {
+        "_value": false
+      },
       "legacy-pipeline": {
         "_value": false
       },
@@ -157,7 +160,6 @@
       "animation",
       "audio",
       "base",
-      "custom-pipeline",
       "dragon-bones",
       "geometry-renderer",
       "gfx-webgl",
@@ -179,7 +181,8 @@
       "ui",
       "video",
       "websocket",
-      "webview"
+      "webview",
+      "custom-pipeline"
     ],
     "noDeprecatedFeatures": {
       "value": false,
