@@ -28,7 +28,7 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 /* eslint-disable max-len */
-import { Material, Texture2D, gfx } from 'cc';
+import { Material, Texture2D, Vec3, gfx } from 'cc';
 
 const { SampleCount } = gfx;
 
@@ -93,43 +93,6 @@ export function fillRequiredHBAO(value: HBAO): void {
     }
     if (value.needBlur === undefined) {
         value.needBlur = false;
-    }
-}
-
-export interface DepthOfField {
-    enabled: boolean; /* false */
-    /* refcount */ material: Material | null;
-    focusDistance: number; /* 0 */
-    focusRange: number; /* 0 */
-    bokehRadius: number; /* 1 */
-    [name: string]: unknown;
-}
-
-export function makeDepthOfField(): DepthOfField {
-    return {
-        enabled: false,
-        material: null,
-        focusDistance: 0,
-        focusRange: 0,
-        bokehRadius: 1,
-    };
-}
-
-export function fillRequiredDepthOfField(value: DepthOfField): void {
-    if (value.enabled === undefined) {
-        value.enabled = false;
-    }
-    if (value.material === undefined) {
-        value.material = null;
-    }
-    if (value.focusDistance === undefined) {
-        value.focusDistance = 0;
-    }
-    if (value.focusRange === undefined) {
-        value.focusRange = 0;
-    }
-    if (value.bokehRadius === undefined) {
-        value.bokehRadius = 1;
     }
 }
 
@@ -277,7 +240,6 @@ export interface PipelineSettings {
     readonly msaa: MSAA;
     enableShadingScale: boolean; /* false */
     shadingScale: number; /* 0.5 */
-    readonly depthOfField: DepthOfField;
     readonly bloom: Bloom;
     readonly toneMapping: ToneMapping;
     readonly colorGrading: ColorGrading;
@@ -291,7 +253,6 @@ export function makePipelineSettings(): PipelineSettings {
         msaa: makeMSAA(),
         enableShadingScale: false,
         shadingScale: 0.5,
-        depthOfField: makeDepthOfField(),
         bloom: makeBloom(),
         toneMapping: makeToneMapping(),
         colorGrading: makeColorGrading(),
@@ -311,11 +272,6 @@ export function fillRequiredPipelineSettings(value: PipelineSettings): void {
     }
     if (value.shadingScale === undefined) {
         value.shadingScale = 0.5;
-    }
-    if (!value.depthOfField) {
-        (value.depthOfField as DepthOfField) = makeDepthOfField();
-    } else {
-        fillRequiredDepthOfField(value.depthOfField);
     }
     if (!value.bloom) {
         (value.bloom as Bloom) = makeBloom();
