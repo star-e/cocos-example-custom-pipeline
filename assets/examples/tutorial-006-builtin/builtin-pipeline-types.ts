@@ -128,33 +128,6 @@ export function fillRequiredColorGrading(value: ColorGrading): void {
     }
 }
 
-export interface FSR {
-    enabled: boolean; /* false */
-    /* refcount */ material: Material | null;
-    sharpness: number; /* 0.8 */
-    [name: string]: unknown;
-}
-
-export function makeFSR(): FSR {
-    return {
-        enabled: false,
-        material: null,
-        sharpness: 0.8,
-    };
-}
-
-export function fillRequiredFSR(value: FSR): void {
-    if (value.enabled === undefined) {
-        value.enabled = false;
-    }
-    if (value.material === undefined) {
-        value.material = null;
-    }
-    if (value.sharpness === undefined) {
-        value.sharpness = 0.8;
-    }
-}
-
 export interface ToneMapping {
     /* refcount */ material: Material | null;
     [name: string]: unknown;
@@ -178,7 +151,6 @@ export interface PipelineSettings {
     shadingScale: number; /* 0.5 */
     readonly toneMapping: ToneMapping;
     readonly colorGrading: ColorGrading;
-    readonly fsr: FSR;
     [name: string]: unknown;
 }
 
@@ -189,7 +161,6 @@ export function makePipelineSettings(): PipelineSettings {
         shadingScale: 0.5,
         toneMapping: makeToneMapping(),
         colorGrading: makeColorGrading(),
-        fsr: makeFSR(),
     };
 }
 
@@ -214,10 +185,5 @@ export function fillRequiredPipelineSettings(value: PipelineSettings): void {
         (value.colorGrading as ColorGrading) = makeColorGrading();
     } else {
         fillRequiredColorGrading(value.colorGrading);
-    }
-    if (!value.fsr) {
-        (value.fsr as FSR) = makeFSR();
-    } else {
-        fillRequiredFSR(value.fsr);
     }
 }

@@ -1104,113 +1104,6 @@ export class BuiltinToneMappingPassBuilder implements rendering.PipelinePassBuil
     private readonly _colorGradingTexSize = new Vec2(0, 0);
 }
 
-export interface FSRPassConfigs {
-    enableFSR: boolean;
-}
-
-export class BuiltinFsrPassBuilder implements rendering.PipelinePassBuilder {
-    getConfigOrder(): number {
-        return 0;
-    }
-    getRenderOrder(): number {
-        return 500;
-    }
-    configCamera(
-        camera: Readonly<renderer.scene.Camera>,
-        pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FSRPassConfigs): void {
-        // FSR (Depend on Shading scale)
-        cameraConfigs.enableFSR = cameraConfigs.settings.fsr.enabled
-            && !!cameraConfigs.settings.fsr.material
-            && cameraConfigs.enableShadingScale
-            && cameraConfigs.shadingScale < 1.0;
-
-        if (cameraConfigs.enableFSR) {
-            ++cameraConfigs.remainingPasses;
-        }
-    }
-    setup(
-        ppl: rendering.BasicPipeline,
-        pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FSRPassConfigs,
-        camera: renderer.scene.Camera,
-        context: PipelineContext,
-        prevRenderPass?: rendering.BasicRenderPassBuilder)
-        : rendering.BasicRenderPassBuilder | undefined {
-        if (!cameraConfigs.enableFSR) {
-            return prevRenderPass;
-        }
-        --cameraConfigs.remainingPasses;
-
-        const inputColorName = context.colorName;
-        const outputColorName
-            = cameraConfigs.remainingPasses === 0
-                ? cameraConfigs.colorName
-                : getPingPongRenderTarget(context.colorName, 'UiColor', cameraConfigs.renderWindowId);
-        context.colorName = outputColorName;
-
-        assert(!!cameraConfigs.settings.fsr.material);
-        return this._addFsrPass(ppl, pplConfigs, cameraConfigs,
-            cameraConfigs.settings,
-            cameraConfigs.settings.fsr.material,
-            cameraConfigs.renderWindowId,
-            cameraConfigs.width,
-            cameraConfigs.height,
-            inputColorName,
-            cameraConfigs.nativeWidth,
-            cameraConfigs.nativeHeight,
-            outputColorName);
-    }
-    private _addFsrPass(
-        ppl: rendering.BasicPipeline,
-        pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FSRPassConfigs,
-        settings: PipelineSettings,
-        fsrMaterial: Material,
-        id: number,
-        width: number,
-        height: number,
-        inputColorName: string,
-        nativeWidth: number,
-        nativeHeight: number,
-        outputColorName: string,
-    ): rendering.BasicRenderPassBuilder {
-        this._fsrTexSize.x = width;
-        this._fsrTexSize.y = height;
-        this._fsrTexSize.z = nativeWidth;
-        this._fsrTexSize.w = nativeHeight;
-        this._fsrParams.x = clamp(1.0 - settings.fsr.sharpness, 0.02, 0.98);
-
-        const uiColorPrefix = 'UiColor';
-
-        const fsrColorName = getPingPongRenderTarget(outputColorName, uiColorPrefix, id);
-
-        const easuPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'cc-fsr-easu');
-        easuPass.addRenderTarget(fsrColorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
-        easuPass.addTexture(inputColorName, 'outputResultMap');
-        easuPass.setVec4('g_platform', pplConfigs.platform);
-        easuPass.setVec4('fsrTexSize', this._fsrTexSize);
-        easuPass
-            .addQueue(rendering.QueueHint.OPAQUE)
-            .addFullscreenQuad(fsrMaterial, 0);
-
-        const rcasPass = ppl.addRenderPass(nativeWidth, nativeHeight, 'cc-fsr-rcas');
-        rcasPass.addRenderTarget(outputColorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
-        rcasPass.addTexture(fsrColorName, 'outputResultMap');
-        rcasPass.setVec4('g_platform', pplConfigs.platform);
-        rcasPass.setVec4('fsrTexSize', this._fsrTexSize);
-        rcasPass.setVec4('fsrParams', this._fsrParams);
-        rcasPass
-            .addQueue(rendering.QueueHint.OPAQUE)
-            .addFullscreenQuad(fsrMaterial, 1);
-
-        return rcasPass;
-    }
-    // FSR
-    private readonly _fsrParams = new Vec4(0, 0, 0, 0);
-    private readonly _fsrTexSize = new Vec4(0, 0, 0, 0);
-}
-
 export class BuiltinUiPassBuilder implements rendering.PipelinePassBuilder {
     getConfigOrder(): number {
         return 0;
@@ -1221,7 +1114,7 @@ export class BuiltinUiPassBuilder implements rendering.PipelinePassBuilder {
     setup(
         ppl: rendering.BasicPipeline,
         pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FSRPassConfigs,
+        cameraConfigs: CameraConfigs,
         camera: renderer.scene.Camera,
         context: PipelineContext,
         prevRenderPass?: rendering.BasicRenderPassBuilder)
@@ -1249,7 +1142,6 @@ if (rendering) {
         private readonly _pipelineEvent: PipelineEventProcessor = cclegacy.director.root.pipelineEvent as PipelineEventProcessor;
         private readonly _forwardPass = new BuiltinForwardPassBuilder();
         private readonly _toneMappingPass = new BuiltinToneMappingPassBuilder();
-        private readonly _fsrPass = new BuiltinFsrPassBuilder();
         private readonly _uiPass = new BuiltinUiPassBuilder();
         // Internal cached resources
         private readonly _clearColor = new Color(0, 0, 0, 1);
@@ -1299,12 +1191,7 @@ if (rendering) {
             }
 
             passBuilders.push(this._forwardPass);
-
             passBuilders.push(this._toneMappingPass);
-
-            if (settings.fsr.enabled) {
-                passBuilders.push(this._fsrPass);
-            }
             passBuilders.push(this._uiPass);
         }
 

@@ -231,51 +231,6 @@ export class BuiltinDevPipelineSettings extends Component {
         return this._settings.colorGrading.colorGradingMap!;
     }
 
-    // FSR
-    @property({
-        group: { id: 'FSR', name: 'FidelityFX Super Resolution', style: 'section' },
-        type: CCBoolean,
-    })
-    set fsrEnable(value: boolean) {
-        this._settings.fsr.enabled = value;
-        if (EDITOR) {
-            this._tryEnableEditorPreview();
-        }
-    }
-    get fsrEnable(): boolean {
-        return this._settings.fsr.enabled;
-    }
-
-    @property({
-        group: { id: 'FSR', name: 'FidelityFX Super Resolution', style: 'section' },
-        type: Material,
-    })
-    set fsrMaterial(value: Material) {
-        if (this._settings.fsr.material === value) {
-            return;
-        }
-        this._settings.fsr.material = value;
-        if (EDITOR) {
-            this._tryEnableEditorPreview();
-        }
-    }
-    get fsrMaterial(): Material {
-        return this._settings.fsr.material!;
-    }
-
-    @property({
-        group: { id: 'FSR', name: 'FidelityFX Super Resolution', style: 'section' },
-        type: CCFloat,
-        range: [0, 1, 0.01],
-        slide: true,
-    })
-    set fsrSharpness(value: number) {
-        this._settings.fsr.sharpness = value;
-    }
-    get fsrSharpness(): number {
-        return this._settings.fsr.sharpness;
-    }
-
     @property({
         group: { id: 'ToneMapping', name: 'ToneMapping', style: 'section' },
         type: Material,

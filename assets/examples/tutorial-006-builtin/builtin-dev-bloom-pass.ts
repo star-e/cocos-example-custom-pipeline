@@ -44,7 +44,7 @@ import {
     PipelineContext
 } from './builtin-dev-pipeline';
 
-const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
+const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent } = _decorator;
 
 const { Color, LoadOp, StoreOp } = gfx;
 
@@ -71,17 +71,17 @@ export class BuiltinDevBloomPass extends BuiltinDevPipelinePassBuilder
     renderOrder = 200;
 
     @property
-    _enableBloom = true;
+    protected _bloomEnable = true;
     @property
-    _material: Material | null = null;
+    protected _material: Material | null = null;
     @property
-    _enableAlphaMask = false;
+    protected _enableAlphaMask = false;
     @property
-    _iterations = 3;
+    protected _iterations = 3;
     @property
-    _threshold = 0.8;
+    protected _threshold = 0.8;
     @property
-    _intensity = 2.3;
+    protected _intensity = 2.3;
 
     // Bloom
     @property({
@@ -89,13 +89,13 @@ export class BuiltinDevBloomPass extends BuiltinDevPipelinePassBuilder
         type: CCBoolean,
     })
     set bloomEnable(value: boolean) {
-        this._enableBloom = value;
+        this._bloomEnable = value;
         if (EDITOR) {
             this._parent._tryEnableEditorPreview();
         }
     }
     get bloomEnable(): boolean {
-        return this._enableBloom;
+        return this._bloomEnable;
     }
 
     @property({
@@ -171,7 +171,7 @@ export class BuiltinDevBloomPass extends BuiltinDevPipelinePassBuilder
         camera: Readonly<renderer.scene.Camera>,
         pipelineConfigs: Readonly<PipelineConfigs>,
         cameraConfigs: CameraConfigs & BloomPassConfigs): void {
-        cameraConfigs.enableBloom = this._enableBloom && !!this._material;
+        cameraConfigs.enableBloom = this._bloomEnable && !!this._material;
         if (cameraConfigs.enableBloom) {
             ++cameraConfigs.remainingPasses;
         }

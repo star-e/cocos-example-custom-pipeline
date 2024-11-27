@@ -72,9 +72,9 @@ export class BuiltinDevFXAAPass extends BuiltinDevPipelinePassBuilder
     renderOrder = 400;
 
     @property
-    _fxaaEnable = true;
+    protected _fxaaEnable = true;
     @property
-    _fxaaMaterial: Material | null = null;
+    protected _fxaaMaterial: Material | null = null;
 
     // FXAA
     @property({
