@@ -397,7 +397,7 @@
     "_enabled": true,
     "__prefab": null,
     "configOrder": 0,
-    "renderOrder": 150,
+    "renderOrder": 200,
     "_enableBloom": true,
     "_material": {
       "__uuid__": "ffb54b0a-924d-4e26-9475-565d07d28443",

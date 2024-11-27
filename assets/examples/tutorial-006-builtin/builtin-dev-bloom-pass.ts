@@ -58,7 +58,7 @@ export class BuiltinDevBloomPass extends BuiltinDevPipelinePassBuilder
         group: { id: 'BuiltinPass', name: 'Pass Settings', style: 'section' },
         type: CCInteger,
     })
-    renderOrder = 150;
+    renderOrder = 200;
 
     @property
     _enableBloom = true;
