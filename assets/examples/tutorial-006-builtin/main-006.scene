@@ -290,7 +290,7 @@
         "enabled": false,
         "sampleCount": 4
       },
-      "enableShadingScale": true,
+      "enableShadingScale": false,
       "shadingScale": 0.7,
       "depthOfField": {
         "enabled": true,
@@ -372,7 +372,7 @@
     "__prefab": null,
     "configOrder": 0,
     "renderOrder": 150,
-    "_enableDof": false,
+    "_enableDof": true,
     "_material": {
       "__uuid__": "8af64728-cb91-4594-b5e9-364a46b70c17",
       "__expectedType__": "cc.Material"
@@ -401,7 +401,7 @@
     "__prefab": null,
     "configOrder": 0,
     "renderOrder": 200,
-    "_enableBloom": false,
+    "_enableBloom": true,
     "_material": {
       "__uuid__": "ffb54b0a-924d-4e26-9475-565d07d28443",
       "__expectedType__": "cc.Material"
@@ -424,7 +424,7 @@
     "__prefab": null,
     "configOrder": 0,
     "renderOrder": 400,
-    "_fxaaEnable": false,
+    "_fxaaEnable": true,
     "_fxaaMaterial": {
       "__uuid__": "025b97cc-7a78-444c-96f9-d1627ac0b44c",
       "__expectedType__": "cc.Material"
