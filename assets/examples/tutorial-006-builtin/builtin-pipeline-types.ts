@@ -28,7 +28,7 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 /* eslint-disable max-len */
-import { Material, Texture2D, Vec3, gfx } from 'cc';
+import { Material, Texture2D, gfx } from 'cc';
 
 const { SampleCount } = gfx;
 
@@ -93,48 +93,6 @@ export function fillRequiredHBAO(value: HBAO): void {
     }
     if (value.needBlur === undefined) {
         value.needBlur = false;
-    }
-}
-
-export interface Bloom {
-    enabled: boolean; /* false */
-    /* refcount */ material: Material | null;
-    enableAlphaMask: boolean; /* false */
-    iterations: number; /* 3 */
-    threshold: number; /* 0.8 */
-    intensity: number; /* 2.3 */
-    [name: string]: unknown;
-}
-
-export function makeBloom(): Bloom {
-    return {
-        enabled: false,
-        material: null,
-        enableAlphaMask: false,
-        iterations: 3,
-        threshold: 0.8,
-        intensity: 2.3,
-    };
-}
-
-export function fillRequiredBloom(value: Bloom): void {
-    if (value.enabled === undefined) {
-        value.enabled = false;
-    }
-    if (value.material === undefined) {
-        value.material = null;
-    }
-    if (value.enableAlphaMask === undefined) {
-        value.enableAlphaMask = false;
-    }
-    if (value.iterations === undefined) {
-        value.iterations = 3;
-    }
-    if (value.threshold === undefined) {
-        value.threshold = 0.8;
-    }
-    if (value.intensity === undefined) {
-        value.intensity = 2.3;
     }
 }
 
@@ -240,7 +198,6 @@ export interface PipelineSettings {
     readonly msaa: MSAA;
     enableShadingScale: boolean; /* false */
     shadingScale: number; /* 0.5 */
-    readonly bloom: Bloom;
     readonly toneMapping: ToneMapping;
     readonly colorGrading: ColorGrading;
     readonly fsr: FSR;
@@ -253,7 +210,6 @@ export function makePipelineSettings(): PipelineSettings {
         msaa: makeMSAA(),
         enableShadingScale: false,
         shadingScale: 0.5,
-        bloom: makeBloom(),
         toneMapping: makeToneMapping(),
         colorGrading: makeColorGrading(),
         fsr: makeFSR(),
@@ -272,11 +228,6 @@ export function fillRequiredPipelineSettings(value: PipelineSettings): void {
     }
     if (value.shadingScale === undefined) {
         value.shadingScale = 0.5;
-    }
-    if (!value.bloom) {
-        (value.bloom as Bloom) = makeBloom();
-    } else {
-        fillRequiredBloom(value.bloom);
     }
     if (!value.toneMapping) {
         (value.toneMapping as ToneMapping) = makeToneMapping();
