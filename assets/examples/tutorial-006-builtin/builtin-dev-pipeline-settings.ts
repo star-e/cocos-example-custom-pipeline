@@ -231,38 +231,6 @@ export class BuiltinDevPipelineSettings extends Component {
         return this._settings.colorGrading.colorGradingMap!;
     }
 
-    // FXAA
-    @property({
-        group: { id: 'FXAA', name: 'Fast Approximate Anti-Aliasing (PostProcessing)', style: 'section' },
-        type: CCBoolean,
-    })
-    set fxaaEnable(value: boolean) {
-        this._settings.fxaa.enabled = value;
-        if (EDITOR) {
-            this._tryEnableEditorPreview();
-        }
-    }
-    get fxaaEnable(): boolean {
-        return this._settings.fxaa.enabled;
-    }
-
-    @property({
-        group: { id: 'FXAA', name: 'Fast Approximate Anti-Aliasing (PostProcessing)', style: 'section' },
-        type: Material,
-    })
-    set fxaaMaterial(value: Material) {
-        if (this._settings.fxaa.material === value) {
-            return;
-        }
-        this._settings.fxaa.material = value;
-        if (EDITOR) {
-            this._tryEnableEditorPreview();
-        }
-    }
-    get fxaaMaterial(): Material {
-        return this._settings.fxaa.material!;
-    }
-
     // FSR
     @property({
         group: { id: 'FSR', name: 'FidelityFX Super Resolution', style: 'section' },

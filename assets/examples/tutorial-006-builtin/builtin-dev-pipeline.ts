@@ -1104,107 +1104,6 @@ export class BuiltinToneMappingPassBuilder implements rendering.PipelinePassBuil
     private readonly _colorGradingTexSize = new Vec2(0, 0);
 }
 
-export interface FXAAPassConfigs {
-    enableFXAA: boolean;
-}
-
-export class BuiltinFXAAPassBuilder implements rendering.PipelinePassBuilder {
-    getConfigOrder(): number {
-        return 0;
-    }
-    getRenderOrder(): number {
-        return 400;
-    }
-    configCamera(
-        camera: Readonly<renderer.scene.Camera>,
-        pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FXAAPassConfigs): void {
-        cameraConfigs.enableFXAA
-            = cameraConfigs.settings.fxaa.enabled
-            && !!cameraConfigs.settings.fxaa.material;
-        if (cameraConfigs.enableFXAA) {
-            ++cameraConfigs.remainingPasses;
-        }
-    }
-    setup(
-        ppl: rendering.BasicPipeline,
-        pplConfigs: Readonly<PipelineConfigs>,
-        cameraConfigs: CameraConfigs & FXAAPassConfigs,
-        camera: renderer.scene.Camera,
-        context: PipelineContext,
-        prevRenderPass?: rendering.BasicRenderPassBuilder)
-        : rendering.BasicRenderPassBuilder | undefined {
-        if (!cameraConfigs.enableFXAA) {
-            return prevRenderPass;
-        }
-        --cameraConfigs.remainingPasses;
-        assert(cameraConfigs.remainingPasses >= 0);
-
-        const id = cameraConfigs.renderWindowId;
-        const ldrColorPrefix = cameraConfigs.enableShadingScale
-            ? `ScaledLdrColor`
-            : `LdrColor`;
-        const ldrColorName = getPingPongRenderTarget(context.colorName, ldrColorPrefix, id);
-
-        assert(!!cameraConfigs.settings.fxaa.material);
-        if (cameraConfigs.remainingPasses === 0) {
-            if (cameraConfigs.enableShadingScale) {
-                this._addFxaaPass(ppl, pplConfigs,
-                    cameraConfigs.settings.fxaa.material,
-                    cameraConfigs.width,
-                    cameraConfigs.height,
-                    context.colorName,
-                    ldrColorName);
-                return addCopyToScreenPass(ppl, pplConfigs, cameraConfigs, ldrColorName);
-            } else {
-                assert(cameraConfigs.width === cameraConfigs.nativeWidth);
-                assert(cameraConfigs.height === cameraConfigs.nativeHeight);
-                return this._addFxaaPass(ppl, pplConfigs,
-                    cameraConfigs.settings.fxaa.material,
-                    cameraConfigs.width,
-                    cameraConfigs.height,
-                    context.colorName,
-                    cameraConfigs.colorName);
-            }
-        } else {
-            const inputColorName = context.colorName;
-            context.colorName = ldrColorName;
-            const lastPass = this._addFxaaPass(ppl, pplConfigs,
-                cameraConfigs.settings.fxaa.material,
-                cameraConfigs.width,
-                cameraConfigs.height,
-                inputColorName,
-                ldrColorName);
-            return lastPass;
-        }
-    }
-    private _addFxaaPass(
-        ppl: rendering.BasicPipeline,
-        pplConfigs: Readonly<PipelineConfigs>,
-        fxaaMaterial: Material,
-        width: number,
-        height: number,
-        ldrColorName: string,
-        colorName: string,
-    ): rendering.BasicRenderPassBuilder {
-        this._fxaaParams.x = width;
-        this._fxaaParams.y = height;
-        this._fxaaParams.z = 1 / width;
-        this._fxaaParams.w = 1 / height;
-
-        const pass = ppl.addRenderPass(width, height, 'cc-fxaa');
-        pass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
-        pass.addTexture(ldrColorName, 'sceneColorMap');
-        pass.setVec4('g_platform', pplConfigs.platform);
-        pass.setVec4('texSize', this._fxaaParams);
-        pass.addQueue(rendering.QueueHint.OPAQUE)
-            .addFullscreenQuad(fxaaMaterial, 0);
-        return pass;
-    }
-    // FXAA
-    private readonly _fxaaParams = new Vec4(0, 0, 0, 0);
-}
-
 export interface FSRPassConfigs {
     enableFSR: boolean;
 }
@@ -1350,7 +1249,6 @@ if (rendering) {
         private readonly _pipelineEvent: PipelineEventProcessor = cclegacy.director.root.pipelineEvent as PipelineEventProcessor;
         private readonly _forwardPass = new BuiltinForwardPassBuilder();
         private readonly _toneMappingPass = new BuiltinToneMappingPassBuilder();
-        private readonly _fxaaPass = new BuiltinFXAAPassBuilder();
         private readonly _fsrPass = new BuiltinFsrPassBuilder();
         private readonly _uiPass = new BuiltinUiPassBuilder();
         // Internal cached resources
@@ -1403,10 +1301,6 @@ if (rendering) {
             passBuilders.push(this._forwardPass);
 
             passBuilders.push(this._toneMappingPass);
-
-            if (settings.fxaa.enabled) {
-                passBuilders.push(this._fxaaPass);
-            }
 
             if (settings.fsr.enabled) {
                 passBuilders.push(this._fsrPass);

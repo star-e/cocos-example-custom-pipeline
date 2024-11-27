@@ -155,28 +155,6 @@ export function fillRequiredFSR(value: FSR): void {
     }
 }
 
-export interface FXAA {
-    enabled: boolean; /* false */
-    /* refcount */ material: Material | null;
-    [name: string]: unknown;
-}
-
-export function makeFXAA(): FXAA {
-    return {
-        enabled: false,
-        material: null,
-    };
-}
-
-export function fillRequiredFXAA(value: FXAA): void {
-    if (value.enabled === undefined) {
-        value.enabled = false;
-    }
-    if (value.material === undefined) {
-        value.material = null;
-    }
-}
-
 export interface ToneMapping {
     /* refcount */ material: Material | null;
     [name: string]: unknown;
@@ -201,7 +179,6 @@ export interface PipelineSettings {
     readonly toneMapping: ToneMapping;
     readonly colorGrading: ColorGrading;
     readonly fsr: FSR;
-    readonly fxaa: FXAA;
     [name: string]: unknown;
 }
 
@@ -213,7 +190,6 @@ export function makePipelineSettings(): PipelineSettings {
         toneMapping: makeToneMapping(),
         colorGrading: makeColorGrading(),
         fsr: makeFSR(),
-        fxaa: makeFXAA(),
     };
 }
 
@@ -243,10 +219,5 @@ export function fillRequiredPipelineSettings(value: PipelineSettings): void {
         (value.fsr as FSR) = makeFSR();
     } else {
         fillRequiredFSR(value.fsr);
-    }
-    if (!value.fxaa) {
-        (value.fxaa as FXAA) = makeFXAA();
-    } else {
-        fillRequiredFXAA(value.fxaa);
     }
 }
