@@ -60,7 +60,7 @@ export class BuiltinDevPipelinePassBuilder extends Component
                 configurable: false,
                 enumerable: false,
                 writable: true,
-            })
+            });
         }
 
         assert(this._settings._passes !== undefined);
