@@ -23,7 +23,7 @@
 */
 
 import {
-    _decorator, assert, CCBoolean, CCFloat, CCInteger,
+    _decorator, assert, CCBoolean, CCInteger,
     gfx, Material, renderer, rendering, Vec4,
 } from 'cc';
 
@@ -45,7 +45,7 @@ import {
     PipelineContext
 } from './builtin-dev-pipeline';
 
-const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
+const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent } = _decorator;
 
 const { Color, LoadOp, StoreOp } = gfx;
 
