@@ -33,7 +33,7 @@ import {
     fillRequiredPipelineSettings, makePipelineSettings, PipelineSettings,
 } from './builtin-pipeline-types';
 
-const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
+const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent } = _decorator;
 
 @ccclass('BuiltinDevPipelineSettings')
 @menu('Rendering/BuiltinDevPipelineSettings')
