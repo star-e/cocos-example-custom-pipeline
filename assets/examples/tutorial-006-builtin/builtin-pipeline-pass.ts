@@ -29,8 +29,8 @@ import {
     rendering,
 } from 'cc';
 
-import { BuiltinDevPipelineSettings } from './builtin-dev-pipeline-settings';
-import { PipelineSettings2 } from './builtin-dev-pipeline';
+import { BuiltinDevPipelineSettings } from './builtin-pipeline-settings';
+import { PipelineSettings2 } from './builtin-pipeline';
 import { EDITOR } from 'cc/env';
 
 const { ccclass, disallowMultiple, executeInEditMode, menu, requireComponent } = _decorator;

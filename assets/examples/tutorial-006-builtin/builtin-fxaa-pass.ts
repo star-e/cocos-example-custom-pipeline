@@ -31,11 +31,11 @@ import { EDITOR } from 'cc/env';
 
 import {
     BuiltinDevPipelineSettings
-} from './builtin-dev-pipeline-settings';
+} from './builtin-pipeline-settings';
 
 import {
     BuiltinDevPipelinePassBuilder
-} from './builtin-dev-pipeline-pass';
+} from './builtin-pipeline-pass';
 
 import {
     addCopyToScreenPass,
@@ -43,7 +43,7 @@ import {
     getPingPongRenderTarget,
     PipelineConfigs,
     PipelineContext
-} from './builtin-dev-pipeline';
+} from './builtin-pipeline';
 
 const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent } = _decorator;
 
