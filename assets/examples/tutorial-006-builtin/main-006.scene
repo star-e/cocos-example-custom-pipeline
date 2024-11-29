@@ -405,14 +405,11 @@
     "configOrder": 0,
     "renderOrder": 200,
     "_bloomEnable": true,
-    "_material": {
-      "__uuid__": "ffb54b0a-924d-4e26-9475-565d07d28443",
-      "__expectedType__": "cc.Material"
-    },
-    "_enableAlphaMask": false,
-    "_iterations": 3,
-    "_threshold": 0.8,
-    "_intensity": 2.3,
+    "_bloomMaterial": null,
+    "_bloomEnableAlphaMask": false,
+    "_bloomIterations": 3,
+    "_bloomThreshold": 0.8,
+    "_bloomIntensity": 2.3,
     "_id": "76+1XcYuxGo6zShwWKMmb2"
   },
   {
